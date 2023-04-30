@@ -1,0 +1,20 @@
+version: "3.7"
+
+services:
+  base:
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: 3.8.3
+        USER_ID: "$USER_ID"
+        GROUP_ID: "$GROUP_ID"
+    image: egmm:latest
+    runtime: nvidia
+    environment:
+      - LOGNAME
+      - MLFLOW_TRACKING_URI=http://host.docker.internal:2222
+    volumes:
+      - ./:/app
+      - /stuff:/stuff
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
