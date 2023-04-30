@@ -1,9 +1,7 @@
 defaults:
-    - general : general_default
-    - model : discrete
-    - train : train_default
-    - dataset : qm9
+    - general: general_default
+    - model: discrete
+    - train: train_default
+    - dataset: qm9
 
-
-
-
+max_num_atoms: "0"
