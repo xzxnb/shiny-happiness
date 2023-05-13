@@ -26,11 +26,13 @@ class MoleculeDataModule(MolecularDataModule):
         val_dataset = MoleculeDataset(self.max_num_atoms, "val", train_dataset.types)
         self.val_smiles = val_dataset.val_smiles
         self.val_smiles_set = val_dataset.val_smiles_set
-        super().prepare_data(datasets={
-            "train": train_dataset,
-            "val": val_dataset,
-            "test": val_dataset,
-        })
+        super().prepare_data(
+            datasets={
+                "train": train_dataset,
+                "val": val_dataset,
+                "test": val_dataset,
+            }
+        )
 
 
 class MoleculeDataset(Dataset):
@@ -38,11 +40,15 @@ class MoleculeDataset(Dataset):
         super().__init__()
         self.size = size
         self.types = types
-        train_smiles, val_smiles, _, _ = get_clear_val_canon_smiles(size, "/app/data/molecules/ontology")
+        train_smiles, val_smiles, _, _ = get_clear_val_canon_smiles(
+            size, "/app/data_creation/ontology"
+        )
         self.train_smiles, self.val_smiles = list(train_smiles), list(val_smiles)
         self.val_smiles_set = set(self.val_smiles)
 
-        self.data = self.process_smiles(self.train_smiles if split == "train" else self.val_smiles)
+        self.data = self.process_smiles(
+            self.train_smiles if split == "train" else self.val_smiles
+        )
 
     def len(self) -> int:
         return len(self.data)
@@ -56,7 +62,9 @@ class MoleculeDataset(Dataset):
         for i, smile in enumerate(smiles):
             mol = Chem.MolFromSmiles(smile)
             for atom in mol.GetAtoms():
-                self.types[atom.GetSymbol()] = self.types.get(atom.GetSymbol(), len(self.types))
+                self.types[atom.GetSymbol()] = self.types.get(
+                    atom.GetSymbol(), len(self.types)
+                )
 
         for i, smile in enumerate(smiles):
             mol = Chem.MolFromSmiles(smile)
@@ -65,7 +73,9 @@ class MoleculeDataset(Dataset):
 
             type_idx = []
             for atom in mol.GetAtoms():
-                self.types[atom.GetSymbol()] = self.types.get(atom.GetSymbol(), len(self.types))
+                self.types[atom.GetSymbol()] = self.types.get(
+                    atom.GetSymbol(), len(self.types)
+                )
                 type_idx.append(self.types[atom.GetSymbol()])
 
             row, col, edge_type = [], [], []
@@ -77,7 +87,7 @@ class MoleculeDataset(Dataset):
 
             edge_index = torch.tensor([row, col], dtype=torch.long)
             edge_type = torch.tensor(edge_type, dtype=torch.long)
-            edge_attr = F.one_hot(edge_type, num_classes=len(bonds)+1).to(torch.float)
+            edge_attr = F.one_hot(edge_type, num_classes=len(bonds) + 1).to(torch.float)
 
             perm = (edge_index[0] * N + edge_index[1]).argsort()
             edge_index = edge_index[:, perm]
@@ -110,9 +120,11 @@ class MoleculeDataset(Dataset):
 class MoleculesInfos(AbstractDatasetInfos):
     def __init__(self, datamodule, cfg, types, recompute_statistics=False):
         self.remove_h = cfg.dataset.remove_h
-        self.need_to_strip = False        # to indicate whether we need to ignore one output from the model
+        self.need_to_strip = (
+            False  # to indicate whether we need to ignore one output from the model
+        )
 
-        self.name = 'molecules'
+        self.name = "molecules"
         self.val_smiles_set = datamodule.val_smiles_set
 
         self.atom_encoder = types
@@ -121,7 +133,7 @@ class MoleculesInfos(AbstractDatasetInfos):
         self.n_nodes = datamodule.node_counts()
         self.max_n_nodes = int(np.argmax(self.n_nodes))
         self.valencies = datamodule.valency_count(self.max_n_nodes)
-        self.valencies = self.valencies[:(self.valencies == 0).nonzero()[0].item()]
+        self.valencies = self.valencies[: (self.valencies == 0).nonzero()[0].item()]
         self.max_weight = 390
         self.atom_weights = {i: i + 1 for i in range(len(types))}
 

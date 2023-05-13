@@ -59,7 +59,7 @@ RUN poetry install
 # A100 compatible torch installation
 
 RUN pip install torch==1.12.0+cu113 torchvision==0.13.0+cu113 torchaudio==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu113
-RUN pip install pytorch-lightning
+RUN pip install pytorch-lightning==1.7.7
 RUN pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.12.0+cu113.html
 
 # Some of DiGress stuff
@@ -76,3 +76,5 @@ USER app
 RUN pip install git+https://github.com/igor-krawczuk/mini-moses@master
 
 # End
+
+ENV PYTHONPATH "/app:/app/DiGress"
