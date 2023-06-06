@@ -24,6 +24,9 @@ def main(
     train_folder = out_folder / "train"
     val_folder = out_folder / "val"
 
+    val_smiles_file = out_folder / "smiles_val.txt"
+    train_smiles_file = out_folder / "smiles_train.txt"
+
     while True:
         try:
             tmp_folder.mkdir(parents=True, exist_ok=False)
@@ -45,21 +48,29 @@ def main(
         else:
             break
 
-    chembl_to_fol_and_smiles.main(
+    filename_to_smile = chembl_to_fol_and_smiles.main(
         tmp_folder,
         atom_size=atom_size,
         smiles_dir=out_folder,
     )
 
-    for entry in tqdm(tmp_folder.glob("*")):
-        out = val_folder if random.random() < val_ratio else train_folder
-        # Launch in process because some occasional Prolog's fatal error can not be catched by except Exception block.
-        work = Process(
-            target=infer_skipbonds.main,
-            args=(os.path.basename(entry), tmp_folder, out, add_skipbonds),
-        )
-        work.start()
-        work.join()
+    with open(val_smiles_file, "w") as fval, open(train_smiles_file, "w") as ftrain:
+        for entry in tqdm(tmp_folder.glob("*")):
+            file_name = os.path.basename(entry)
+            smile = filename_to_smile[file_name]
+            out, smiles_out = (
+                (val_folder, fval)
+                if random.random() < val_ratio
+                else (train_folder, ftrain)
+            )
+            smiles_out.write(f"{smile}\n")
+            # Launch in process because some occasional Prolog's fatal error can not be catched by except Exception block.
+            work = Process(
+                target=infer_skipbonds.main,
+                args=(file_name, tmp_folder, out, add_skipbonds),
+            )
+            work.start()
+            work.join()
 
     shutil.rmtree(tmp_folder)
 

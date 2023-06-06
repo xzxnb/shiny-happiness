@@ -33,6 +33,7 @@ def main(
     ]
     ontology_ = ontology.Ontology(domains=[domain], predicates=predicates)
     handler_initialized = handler.MoleculesHandler(atom_size, ontology_)
+    filename_to_smile = {}
 
     for i, smile in enumerate(tqdm(data)):
         try:
@@ -84,7 +85,8 @@ def main(
                     to_write_id, len(smile_to_write_id)
                 )
 
-                filepath = save_folder / f"{smile_to_write_id[to_write_id]}.mol"
+                filename = f"{smile_to_write_id[to_write_id]}.mol"
+                filepath = save_folder / filename
 
                 our_smile = Chem.CanonSmiles(
                     Chem.MolToSmiles(
@@ -100,6 +102,7 @@ def main(
                 smile_to_idx[our_smile] = smile_to_idx.get(our_smile, len(smile_to_idx))
 
                 if len(to_write) > 0:
+                    filename_to_smile[filename] = our_smile
                     with open(filepath, "w") as f:
                         for s in to_write:
                             f.write(s + "\n")
@@ -109,12 +112,13 @@ def main(
         except Exception as e:
             print(e)
 
-        if smiles_dir is not None:
-            with open(smiles_dir / f"smile{atom_size}", "w") as smiles_file:
-                for line in smiles_list:
-                    smiles_file.write(line)
+    if smiles_dir is not None:
+        with open(smiles_dir / f"smile{atom_size}", "w") as smiles_file:
+            for line in smiles_list:
+                smiles_file.write(line)
 
     print(Counter(smiles_list).most_common(5))
+    return filename_to_smile
 
 
 if __name__ == "__main__":
