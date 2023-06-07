@@ -9,18 +9,21 @@ from utils import load_molecules
 
 
 # define the argument parser
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                 add_help=False)
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=False
+)
 
 # define two potential arguments to use when drawing SMILES from a file
-parser.add_argument("--smi",
-                    type=str,
-                    default="data/gdb13_1K/train.smi",
-                    help="SMILES file containing molecules to analyse.")
+parser.add_argument(
+    "--smi",
+    type=str,
+    default="../data/molecules/size_12/smiles_train.txt",
+    help="SMILES file containing molecules to analyse.",
+)
 args = parser.parse_args()
 
 
-def get_max_n_atoms(smi_file : str) -> int:
+def get_max_n_atoms(smi_file: str) -> int:
     """
     Determines the maximum number of atoms per molecule in an input SMILES file.
 

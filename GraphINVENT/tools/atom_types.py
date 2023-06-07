@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "--smi",
     type=str,
-    default="data/gdb13_1K/train.smi",
+    default="../data/molecules/size_12/smiles_train.txt",
     help="SMILES file containing molecules to analyse.",
 )
 args = parser.parse_args()
