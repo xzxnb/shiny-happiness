@@ -14,7 +14,8 @@ from data_creation import chembl_to_fol_and_smiles, infer_skipbonds
 def main(
     atom_size: int = 8,
     out_folder: t.Optional[Path] = None,
-    val_ratio: float = 0.2,
+    val_ratio: float = 0.1,
+    test_ratio: float = 0.2,
     add_skipbonds: bool = False,
 ):
     pl.seed_everything(0)
@@ -23,15 +24,18 @@ def main(
     tmp_folder = Path(f"{str(out_folder)}_tmp")
     train_folder = out_folder / "train"
     val_folder = out_folder / "val"
+    test_folder = out_folder / "test"
 
-    val_smiles_file = out_folder / "smiles_val.txt"
-    train_smiles_file = out_folder / "smiles_train.txt"
+    val_smiles_file = out_folder / "valid.smi"
+    train_smiles_file = out_folder / "train.smi"
+    test_smiles_file = out_folder / "test.smi"
 
     while True:
         try:
             tmp_folder.mkdir(parents=True, exist_ok=False)
             train_folder.mkdir(parents=True, exist_ok=False)
             val_folder.mkdir(parents=True, exist_ok=False)
+            test_folder.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             if input("Remove existing? [y/n]: ").strip() == "y":
                 try:
@@ -54,13 +58,18 @@ def main(
         smiles_dir=out_folder,
     )
 
-    with open(val_smiles_file, "w") as fval, open(train_smiles_file, "w") as ftrain:
+    with open(val_smiles_file, "w") as fval, open(
+        train_smiles_file, "w"
+    ) as ftrain, open(test_smiles_file, "w") as ftest:
         for entry in tqdm(tmp_folder.glob("*")):
             file_name = os.path.basename(entry)
             smile = filename_to_smile[file_name]
+            ratio = random.random()
             out, smiles_out = (
                 (val_folder, fval)
-                if random.random() < val_ratio
+                if 0 <= ratio < val_ratio
+                else (test_folder, ftest)
+                if val_ratio <= ratio < val_ratio + test_ratio
                 else (train_folder, ftrain)
             )
             smiles_out.write(f"{smile}\n")
