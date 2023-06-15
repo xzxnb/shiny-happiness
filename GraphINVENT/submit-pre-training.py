@@ -17,13 +17,14 @@ import torch
 
 
 # define what you want to do for the specified job(s)
-DATASET = "size_18"  # dataset name in "./data/pre-training/"
+SIZE = 12
+DATASET = f"size_{SIZE}"  # dataset name in "./data/pre-training/"
 JOB_TYPE = "train"  # "preprocess", "train", "generate", or "test"
 JOBDIR_START_IDX = 0  # where to start indexing job dirs
 N_JOBS = 1  # number of jobs to run per model
 RESTART = False  # whether or not this is a restart job
 FORCE_OVERWRITE = True  # overwrite job directories which already exist
-JOBNAME = "example-job-name"  # used to create a sub directory
+JOBNAME = f"{DATASET}"  # used to create a sub directory
 
 # if running using SLURM sbatch, specify params below
 USE_SLURM = False  # use SLURM or not
@@ -41,10 +42,10 @@ else:
     CPUS_PER_TASK = 4
 
 # set paths here
-HOME = str(Path.home())
-PYTHON_PATH = f"{HOME}/miniconda3/envs/graphinvent/bin/python"
+HOME = str(Path("/app"))
+PYTHON_PATH = f"/home/app/.pyenv/versions/3.8.3/bin/python"
 GRAPHINVENT_PATH = "./graphinvent/"
-DATA_PATH = "./data/pre-training/"
+DATA_PATH = "../data/molecules/"
 
 if torch.cuda.is_available():
     DEVICE = "cuda"
@@ -53,16 +54,16 @@ else:
 
 # define dataset-specific parameters
 params = {
-    "atom_types": ["C", "N", "O", "S", "Cl"],
-    "formal_charge": [-1, 0, +1],
-    "max_n_nodes": 13,
+    "atom_types": ["C", "N", "O", "F", "P", "S", "Cl"],
+    "formal_charge": [0],
+    "max_n_nodes": 12,
     "job_type": JOB_TYPE,
     "dataset_dir": f"{DATA_PATH}{DATASET}/",
     "restart": RESTART,
     "model": "GGNN",
     "sample_every": 2,
     "init_lr": 1e-4,
-    "epochs": 100,
+    "epochs": 1000,
     "batch_size": 50,
     "block_size": 1000,
     "device": DEVICE,
@@ -79,6 +80,9 @@ def submit() -> None:
     of this file.
     """
     check_paths()
+    write_input_csv(
+        params_dict=params, dict_path=f"{params['dataset_dir']}preprocessing_params.csv"
+    )
 
     # create an output directory
     dataset_output_path = f"{HOME}/GraphINVENT/output_{DATASET}"
@@ -157,12 +161,14 @@ def submit() -> None:
         time.sleep(2)
 
 
-def write_input_csv(params_dict: dict, filename: str = "params.csv") -> None:
+def write_input_csv(
+    params_dict: dict, filename: str = "params.csv", dict_path=None
+) -> None:
     """
     Writes job parameters/hyperparameters in `params_dict` to CSV using the specified
     `filename`.
     """
-    dict_path = params_dict["job_dir"] + filename
+    dict_path = dict_path or params_dict["job_dir"] + filename
 
     with open(dict_path, "w") as csv_file:
         writer = csv.writer(csv_file, delimiter=";")

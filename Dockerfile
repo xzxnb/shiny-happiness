@@ -75,6 +75,10 @@ USER app
 
 RUN pip install git+https://github.com/igor-krawczuk/mini-moses@master
 
+# GraphINVENT stuff
+
+RUN pip install h5py
+
 # End
 
-ENV PYTHONPATH "/app:/app/DiGress"
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT"

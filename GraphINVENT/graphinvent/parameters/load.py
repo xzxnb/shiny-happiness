@@ -7,7 +7,7 @@ import rdkit
 from rdkit.Chem.rdmolfiles import SmilesMolSupplier
 
 
-def molecules(path : str) -> rdkit.Chem.rdmolfiles.SmilesMolSupplier:
+def molecules(path: str) -> rdkit.Chem.rdmolfiles.SmilesMolSupplier:
     """
     Reads a SMILES file (full path/filename specified by `path`) and returns
     `rdkit.Mol` objects.
@@ -19,13 +19,15 @@ def molecules(path : str) -> rdkit.Chem.rdmolfiles.SmilesMolSupplier:
     smi_file.close()
 
     # read file
-    molecule_set = SmilesMolSupplier(path,
-                                     sanitize=True,
-                                     nameColumn=-1,
-                                     titleLine=has_header)
+    print("Init SmilesMolSupplier start")
+    molecule_set = SmilesMolSupplier(
+        path, sanitize=True, nameColumn=-1, titleLine=has_header
+    )
+    print("Init SmilesMolSupplier done")
     return molecule_set
 
-def which_model(input_csv_path : str) -> str:
+
+def which_model(input_csv_path: str) -> str:
     """
     Gets the type of model to use by reading it from CSV (in "input.csv").
 
@@ -39,7 +41,6 @@ def which_model(input_csv_path : str) -> str:
         value (str) : Name of model to use.
     """
     with open(input_csv_path, "r") as csv_file:
-
         params_reader = csv.reader(csv_file, delimiter=";")
 
         for key, value in params_reader:
