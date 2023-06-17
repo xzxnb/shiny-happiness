@@ -79,6 +79,10 @@ RUN pip install git+https://github.com/igor-krawczuk/mini-moses@master
 
 RUN pip install h5py
 
+# ...
+
+RUN pip install molecule-generation
+
 # End
 
 ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT"
