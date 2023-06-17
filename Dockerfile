@@ -83,6 +83,26 @@ RUN pip install h5py
 
 RUN pip install molecule-generation
 
+# Conda
+
+USER root
+
+ENV CONDA_DIR /opt/conda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p $CONDA_DIR
+ENV PATH=$CONDA_DIR/bin:$PATH
+RUN chmod -R a+w $CONDA_DIR
+
+COPY data_efficient_grammar/environment.yml data_efficient_grammar/environment.yml
+COPY data_efficient_grammar/retro_star/packages data_efficient_grammar/retro_star/packages
+RUN chmod -R a+w data_efficient_grammar/
+
+USER app
+
+RUN conda env create -f data_efficient_grammar/environment.yml
+RUN pip install -e data_efficient_grammar/retro_star/packages/mlp_retrosyn && \
+    pip install -e data_efficient_grammar/retro_star/packages/rdchiral
+
 # End
 
 ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT"
