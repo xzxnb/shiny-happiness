@@ -30,3 +30,8 @@ cp data/molecules/size_12/train.smi data/molecules/size_12/test.smiles
 ```bash
 dc run --rm base molecule_generation preprocess data/molecules/size_12/ data/molecules/size_12_moler/ data/molecules/size_12_moler_tracke/
 ```
+
+```bash
+dc run --rm base molecule_generation train MoLeR data/molecules/size_12_moler_tracke/
+dc run --rm base molecule_generation train CGVAE data/molecules/size_12_moler_tracke/
+```
