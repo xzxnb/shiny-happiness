@@ -35,3 +35,9 @@ dc run --rm base molecule_generation preprocess data/molecules/size_12/ data/mol
 dc run --rm base molecule_generation train MoLeR data/molecules/size_12_moler_tracke/
 dc run --rm base molecule_generation train CGVAE data/molecules/size_12_moler_tracke/
 ```
+
+## DEG
+
+```bash
+python main.py --training_data="../data/molecules/size_12/train.smiles" --output output_deg_12
+```

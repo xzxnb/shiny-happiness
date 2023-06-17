@@ -103,6 +103,21 @@ RUN conda env create -f data_efficient_grammar/environment.yml
 RUN pip install -e data_efficient_grammar/retro_star/packages/mlp_retrosyn && \
     pip install -e data_efficient_grammar/retro_star/packages/rdchiral
 
+# GDSS
+
+RUN pip install \
+    molsets \
+    pyyaml \
+    pandas \
+    cycler \
+    easydict \
+    kiwisolver \
+    matplotlib \
+    pyparsing \
+    python-dateutil \
+    six \
+    pyemd
+
 # End
 
 ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT"
