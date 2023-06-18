@@ -79,7 +79,7 @@ RUN pip install git+https://github.com/igor-krawczuk/mini-moses@master
 
 RUN pip install h5py
 
-# ...
+# Microsoft molecule gen
 
 RUN pip install molecule-generation
 
@@ -103,21 +103,17 @@ RUN conda env create -f data_efficient_grammar/environment.yml
 RUN pip install -e data_efficient_grammar/retro_star/packages/mlp_retrosyn && \
     pip install -e data_efficient_grammar/retro_star/packages/rdchiral
 
-# GDSS
+# Reinvent
 
-RUN pip install \
-    molsets \
-    pyyaml \
-    pandas \
-    cycler \
-    easydict \
-    kiwisolver \
-    matplotlib \
-    pyparsing \
-    python-dateutil \
-    six \
-    pyemd
+USER root
+
+COPY reinvent-randomized/environment.yml reinvent-randomized/environment.yml
+RUN chmod -R a+w reinvent-randomized/
+
+USER app
+
+RUN conda env create -f reinvent-randomized/environment.yml
 
 # End
 
-ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT"
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized"
