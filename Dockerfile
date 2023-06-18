@@ -90,7 +90,7 @@ USER root
 ENV CONDA_DIR /opt/conda
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     /bin/bash ~/miniconda.sh -b -p $CONDA_DIR
-ENV PATH=$CONDA_DIR/bin:$PATH
+ENV PATH=$PATH:$CONDA_DIR/bin
 RUN chmod -R a+w $CONDA_DIR
 
 COPY data_efficient_grammar/environment.yml data_efficient_grammar/environment.yml

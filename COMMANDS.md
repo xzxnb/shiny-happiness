@@ -34,11 +34,10 @@ dc run --rm base molecule_generation preprocess data/molecules/size_12/ data/mol
 
 ```bash
 dc run --rm base molecule_generation train MoLeR data/molecules/size_12_moler_tracke/ --save-dir output_moler_12
-dc run --rm base molecule_generation train CGVAE data/molecules/size_12_moler_tracke/ --save-dir output_cgvae_12
 ```
 
 ```bash
-dc run --rm base molecule_generation sample output_cgvae_12 1000
+dc run --rm base molecule_generation sample output_moler_12 1000
 ```
 
 ## DEG

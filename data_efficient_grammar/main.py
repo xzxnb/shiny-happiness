@@ -233,12 +233,12 @@ if __name__ == "__main__":
         help="hidden size of the potential function",
     )
     parser.add_argument(
-        "--max_epoches", type=int, default=50, help="maximal training epoches"
+        "--max_epoches", type=int, default=1000, help="maximal training epoches"
     )
     parser.add_argument(
         "--num_generated_samples",
         type=int,
-        default=10_000_000_000,
+        default=100,
         help="number of generated samples to evaluate grammar",
     )
     parser.add_argument(
