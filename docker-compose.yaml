@@ -16,5 +16,6 @@ services:
     volumes:
       - ./:/app
       - /stuff:/stuff
+      - .netrc/:/home/app/.netrc
     extra_hosts:
       - "host.docker.internal:host-gateway"

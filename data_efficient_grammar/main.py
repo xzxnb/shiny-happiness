@@ -276,8 +276,7 @@ if __name__ == "__main__":
             exit()
         else:
             os.system(f"rm -r {args.output_dir}")
-    else:
-        output_dir.mkdir(parents=True)
+    output_dir.mkdir(parents=True)
 
     # Get raw training data
     assert os.path.exists(
