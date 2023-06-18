@@ -3,6 +3,7 @@ data/
 .backup/
 outputs/
 output_*
+.netrc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
