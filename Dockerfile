@@ -93,13 +93,17 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 ENV PATH=$PATH:$CONDA_DIR/bin
 RUN chmod -R a+w $CONDA_DIR
 
+# DEG
+
 COPY data_efficient_grammar/environment.yml data_efficient_grammar/environment.yml
+COPY data_efficient_grammar/retro_star/environment.yml data_efficient_grammar/retro_star/environment.yml
 COPY data_efficient_grammar/retro_star/packages data_efficient_grammar/retro_star/packages
 RUN chmod -R a+w data_efficient_grammar/
 
 USER app
 
 RUN conda env create -f data_efficient_grammar/environment.yml
+RUN conda env create -f data_efficient_grammar/retro_star/environment.yml
 RUN pip install -e data_efficient_grammar/retro_star/packages/mlp_retrosyn && \
     pip install -e data_efficient_grammar/retro_star/packages/rdchiral
 
@@ -116,4 +120,4 @@ RUN conda env create -f reinvent-randomized/environment.yml
 
 # End
 
-ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized"
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN"
