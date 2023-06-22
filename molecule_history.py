@@ -33,6 +33,7 @@ def main():
             and (
                 f"{max_num_atoms}_generated_smiles.txt" in str(x)
                 or f"_{max_num_atoms}/generated_samples.txt" in str(x)
+                or f"_{max_num_atoms}/generated_smiles.txt" in str(x)
             )
         ]
         plot_history(max_num_atoms, filtered_files)
@@ -204,23 +205,28 @@ def get_cumulative_perc_deduplicated(gen_smiles, dataset_smiles):
     return sizes, percs
 
 
-def get_molecule_history(filepath: str) -> list:
+def get_molecule_history(filepath: str | Path) -> list:
     history = []
     with open(filepath) as file:
         for idx, line in tqdm(enumerate(file), desc=f"Reading {filepath}"):
             line = line.strip()
             if not line:
                 continue
+
             items = line.split()
 
-            if len(items) == 3:
+            if "moler" in str(filepath) and idx < 20 and len(items) > 1:
+                # Output made of >, not actual molecules.
+                continue
+            elif len(items) == 3:
                 smile = items[2]
+            elif len(items) == 2 and items[1] == "working":
+                smile = items[0]
             elif len(items) == 1:
                 smile = items[0]
             else:
                 raise Exception(f"Unknown format, {items}")
 
-            assert len(items) in (1, 3)
             history.append(smile)
 
     return convert_smiles_to_canon(history)
@@ -254,9 +260,6 @@ def filepath_to_title(filepath: Path) -> str:
 
 def flat(list_of_lists):
     return [item for sublist in list_of_lists for item in sublist]
-
-
-gnnhs_regex = r"-gnnhs\d+"
 
 
 if __name__ == "__main__":
