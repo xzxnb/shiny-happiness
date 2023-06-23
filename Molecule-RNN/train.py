@@ -10,7 +10,7 @@ from tqdm import tqdm
 from rdkit import Chem
 import selfies as sf
 
-from dataloader import dataloader_gen
+from dataloader import dataloader_gen, none_on_exp
 from dataloader import SELFIEVocab, RegExVocab, CharVocab
 from model import RNN
 
@@ -20,11 +20,7 @@ from rdkit import rdBase
 rdBase.DisableLog("rdApp.error")
 
 
-def make_vocab(config):
-    # load vocab
-    which_vocab = config["which_vocab"]
-    vocab_path = config["vocab_path"]
-
+def make_vocab(which_vocab, vocab_path):
     if which_vocab == "selfies":
         return SELFIEVocab(vocab_path)
     elif which_vocab == "regex":
@@ -36,6 +32,7 @@ def make_vocab(config):
 
 
 def sample(model, vocab, batch_size):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     """Sample a batch of SMILES from current model."""
     model.eval()
     # sample
@@ -55,7 +52,11 @@ def sample(model, vocab, batch_size):
 
     # convert SELFIES back to SMILES
     if vocab.name == "selfies":
-        molecules = [sf.decoder(x) for x in molecules]
+        molecules = [
+            sf.decoder(x)
+            for x in molecules
+            if none_on_exp(lambda: sf.decoder(x)) is not None
+        ]
 
     return molecules
 
@@ -74,17 +75,27 @@ def compute_valid_rate(molecules):
     return num_valid, num_invalid
 
 
-def main():
+def main(
+    dataset_file: str,
+    which_vocab: str,  # "selfies", "regex", or "char"
+    vocab_path: str,
+    out_dir: str,
+):
+    # size of vocab + <eos> + <sos> + <pad>
+    # char: 48, regex:75, selfies:78
+    num_embeddings = (
+        sum((1 if line.strip() else 0) for line in open(vocab_path)) - 1 + 3
+    )
     # detect cpu or gpu
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device: ", device)
 
-    config_dir = "./train.yaml"
+    config_dir = "/app/Molecule-RNN/train.yaml"
     with open(config_dir, "r") as f:
         config = yaml.full_load(f)
+    config["rnn_config"]["num_embeddings"] = num_embeddings
 
     # directory for results
-    out_dir = config["out_dir"]
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     trained_model_dir = out_dir + "trained_model.pt"
@@ -94,9 +105,6 @@ def main():
         yaml.dump(config, f)
 
     # training data
-    dataset_dir = config["dataset_dir"]
-    which_vocab = config["which_vocab"]
-    vocab_path = config["vocab_path"]
     percentage = config["percentage"]
 
     # create dataloader
@@ -107,7 +115,7 @@ def main():
     print("number of workers to load data: ", num_workers)
     print("which vocabulary to use: ", which_vocab)
     dataloader, train_size = dataloader_gen(
-        dataset_dir,
+        dataset_file,
         percentage,
         which_vocab,
         vocab_path,
@@ -157,7 +165,7 @@ def main():
     )
 
     # vocabulary object used by the sample() function
-    vocab = make_vocab(config)
+    vocab = make_vocab(which_vocab=which_vocab, vocab_path=vocab_path)
 
     # train and validation, the results are saved.
     train_losses = []

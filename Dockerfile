@@ -121,3 +121,7 @@ RUN conda env create -f reinvent-randomized/environment.yml
 # End
 
 ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN"
+
+# Temp
+
+RUN pip install selfies

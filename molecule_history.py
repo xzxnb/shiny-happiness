@@ -77,6 +77,9 @@ def plot_history(
             "DiGress continuous",
             "Data Efficient Grammar",
             "MoLeR",
+            "RNN Selfies",
+            "RNN Regex",
+            "RNN Char",
         ),
     }
 
@@ -97,9 +100,9 @@ def plot_history(
         "DiGress continuous": ("-", "orange"),
         "Data Efficient Grammar": ("-", "tab:olive"),
         "MoLeR": ("-", "tab:blue"),
-        # f"ds-q-{max_num_atoms}-graphpot": ("-", "wheat"),
-        # f"ds-q-{max_num_atoms}-extragraphpot": ("-", "aqua"),
-        # f"ds-q-{max_num_atoms}": ("-", "tab:red"),
+        "RNN Selfies": ("-", "wheat"),
+        "RNN Regex": ("-", "aqua"),
+        "RNN Char": ("-", "tab:red"),
         # f"ds-q-{max_num_atoms} max-sum": ("-.", "tab:green"),
         # f"ds-q-{max_num_atoms} sum-max": ("-.", "tab:purple"),
         # f"orig-{max_num_atoms}": (":", "tab:brown"),
@@ -256,6 +259,18 @@ def filepath_to_title(filepath: Path) -> str:
 
     elif "data_efficient_grammar" in filepath_str.lower():
         return "Data Efficient Grammar"
+
+    elif "rnn" and "selfies" in filepath_str.lower():
+        return "RNN Selfies"
+
+    elif "rnn" and "regex" in filepath_str.lower():
+        return "RNN Regex"
+
+    elif "rnn" and "char" in filepath_str.lower():
+        return "RNN Char"
+
+    else:
+        raise RuntimeError(f"Unknown method for {filepath}")
 
 
 def flat(list_of_lists):
