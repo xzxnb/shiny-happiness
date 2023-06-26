@@ -11,6 +11,7 @@ from rdkit import Chem
 
 # suppress rdkit error
 from rdkit import rdBase
+from dataloader import dataloader_gen, none_on_exp
 
 rdBase.DisableLog("rdApp.error")
 
@@ -47,9 +48,7 @@ def main(
     rnn_config = config["rnn_config"]
     model = RNN(rnn_config).to(device)
     model.load_state_dict(
-        torch.load(
-            config["out_dir"] + "trained_model.pt", map_location=torch.device(device)
-        )
+        torch.load(result_dir + "trained_model.pt", map_location=torch.device(device))
     )
     model.eval()
 
@@ -74,7 +73,11 @@ def main(
 
         # convert SELFIES back to SMILES
         if vocab.name == "selfies":
-            molecules = [sf.decoder(x) for x in molecules]
+            molecules = [
+                sf.decoder(x)
+                for x in molecules
+                if none_on_exp(lambda: sf.decoder(x)) is not None
+            ]
 
         # save the valid sampled SMILES to output file,
         for smiles in molecules:
