@@ -11,7 +11,7 @@ rnn_config:
 
 batch_size: 512
 shuffle: True
-num_epoch: 10000
+num_epoch: 100000
 which_optimizer: adam
 learning_rate: 0.001
 weight_decay: 0.0001
