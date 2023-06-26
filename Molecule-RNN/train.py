@@ -94,6 +94,8 @@ def main(
     with open(config_dir, "r") as f:
         config = yaml.full_load(f)
     config["rnn_config"]["num_embeddings"] = num_embeddings
+    config["which_vocab"] = which_vocab
+    config["vocab_path"] = vocab_path
 
     # directory for results
     if not os.path.exists(out_dir):
