@@ -79,6 +79,7 @@ def main(dataset_dir, output_vocab):
         ".S",
         ".O",
         "l",
+        ".F",
     ]
 
     special = [
