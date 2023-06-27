@@ -1,4 +1,5 @@
 import re
+import typer
 import matplotlib.pyplot as plt
 import itertools as it
 from typing import Union
@@ -12,7 +13,7 @@ from compare_runs import get_clear_val_canon_smiles
 plt.rcParams["text.usetex"] = True
 
 
-def main():
+def main(log: bool = False):
     all_generated_files = list(Path(".").rglob("*generated_smiles.txt")) + list(
         Path(".").rglob("*generated_samples.txt")
     )
@@ -41,7 +42,7 @@ def main():
         if not filtered_files:
             print("No files for ", max_num_atoms)
             continue
-        plot_history(max_num_atoms, filtered_files)
+        plot_history(max_num_atoms, filtered_files, log)
 
 
 def load_smiles_as_canon(max_num_atoms: int) -> list:
@@ -72,6 +73,7 @@ def convert_smiles_to_canon(smiles: list) -> list:
 def plot_history(
     max_num_atoms: int,
     files: list,
+    log: bool,
 ):
     print(f"Plotting history for {max_num_atoms} atoms")
     val_canons = load_smiles_as_canon(max_num_atoms)
@@ -195,6 +197,9 @@ def plot_history(
 
     for group, (fig, ax) in group_to_fig_axe.items():
         ax.legend(loc="lower right")
+        if log:
+            ax.set_yscale("log")
+            ax.set_xscale("log")
         fig.savefig(f"molecule_history_{max_num_atoms}_{group}.jpg")
 
 
@@ -283,4 +288,4 @@ def flat(list_of_lists):
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
