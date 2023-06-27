@@ -38,6 +38,9 @@ def main():
                 or f"_{max_num_atoms}_" in str(x)
             )
         ]
+        if not filtered_files:
+            print("No files for ", max_num_atoms)
+            continue
         plot_history(max_num_atoms, filtered_files)
 
 
