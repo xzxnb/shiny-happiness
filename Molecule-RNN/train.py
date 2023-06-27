@@ -10,6 +10,7 @@ from tqdm import tqdm
 from rdkit import Chem
 import selfies as sf
 
+from pathlib import Path
 from dataloader import dataloader_gen, none_on_exp
 from dataloader import SELFIEVocab, RegExVocab, CharVocab
 from model import RNN
@@ -81,6 +82,9 @@ def main(
     vocab_path: str,
     out_dir: str,
 ):
+    if Path(out_dir).exists():
+        raise ValueError("Output directory already exists!")
+
     # size of vocab + <eos> + <sos> + <pad>
     # char: 48, regex:75, selfies:78
     num_embeddings = (

@@ -73,6 +73,7 @@ def main(dataset_dir, output_vocab):
         "Si",
         "Te",
         ".N",
+        ".c",
         ".C",
         ".0",
         ".S",
