@@ -1,6 +1,7 @@
 import re
 import matplotlib.pyplot as plt
 import itertools as it
+from typing import Union
 from rdkit import Chem
 from tqdm import tqdm
 from math import ceil, sqrt
@@ -34,6 +35,7 @@ def main():
                 f"{max_num_atoms}_generated_smiles.txt" in str(x)
                 or f"_{max_num_atoms}/generated_samples.txt" in str(x)
                 or f"_{max_num_atoms}/generated_smiles.txt" in str(x)
+                or f"_{max_num_atoms}_" in str(x)
             )
         ]
         plot_history(max_num_atoms, filtered_files)
@@ -208,7 +210,7 @@ def get_cumulative_perc_deduplicated(gen_smiles, dataset_smiles):
     return sizes, percs
 
 
-def get_molecule_history(filepath: str | Path) -> list:
+def get_molecule_history(filepath: Union[str, Path]) -> list:
     history = []
     with open(filepath) as file:
         for idx, line in tqdm(enumerate(file), desc=f"Reading {filepath}"):
