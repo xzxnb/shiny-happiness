@@ -23,6 +23,7 @@ def main(log: bool = False):
             30,
             25,
             20,
+            15,
             12,
             8,
         ],
@@ -199,7 +200,6 @@ def plot_history(
         ax.legend(loc="lower right")
         if log:
             ax.set_yscale("log")
-            ax.set_xscale("log")
         fig.savefig(f"molecule_history_{max_num_atoms}_{group}.jpg")
 
 
