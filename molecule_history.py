@@ -14,8 +14,10 @@ plt.rcParams["text.usetex"] = True
 
 
 def main(log: bool = False):
-    all_generated_files = list(Path(".").rglob("*generated_smiles.txt")) + list(
-        Path(".").rglob("*generated_samples.txt")
+    all_generated_files = (
+        list(Path(".").rglob("*generated_smiles.txt"))
+        + list(Path(".").rglob("*generated_samples.txt"))
+        + list(Path(".").rglob("*generated_molecules.txt"))
     )
 
     for max_num_atoms in tqdm(
@@ -37,6 +39,7 @@ def main(log: bool = False):
                 f"{max_num_atoms}_generated_smiles.txt" in str(x)
                 or f"_{max_num_atoms}/generated_samples.txt" in str(x)
                 or f"_{max_num_atoms}/generated_smiles.txt" in str(x)
+                or f"_{max_num_atoms}/generated_molecules.txt" in str(x)
                 or f"_{max_num_atoms}_" in str(x)
             )
         ]
@@ -85,6 +88,7 @@ def plot_history(
             "DiGress continuous",
             "Data Efficient Grammar",
             "MoLeR",
+            "Paccmann VAE",
             "RNN Selfies",
             "RNN Regex",
             "RNN Char",
@@ -111,7 +115,7 @@ def plot_history(
         "RNN Selfies": ("-", "wheat"),
         "RNN Regex": ("-", "aqua"),
         "RNN Char": ("-", "tab:red"),
-        # f"ds-q-{max_num_atoms} max-sum": ("-.", "tab:green"),
+        "Paccmann VAE": ("-", "tab:green"),
         # f"ds-q-{max_num_atoms} sum-max": ("-.", "tab:purple"),
         # f"orig-{max_num_atoms}": (":", "tab:brown"),
         # f"orig-seventh-depth-{max_num_atoms}": (":", "tab:pink"),
@@ -136,6 +140,9 @@ def plot_history(
         style, color = method_to_linestyle.get(method, ("-", "gray"))
 
         history = get_molecule_history(file)
+        if not history:
+            raise RuntimeError("No history for ", method, file)
+            continue
         history_dedup = dedup_by(history, lambda x: x)
 
         molecule_counter = Counter(history)
@@ -263,6 +270,9 @@ def filepath_to_title(filepath: Path) -> str:
 
     elif "DiGress" and "discrete" in filepath_str:
         return "DiGress discrete"
+
+    elif "paccmann" in filepath_str and "vae" in filepath_str:
+        return "Paccmann VAE"
 
     elif "moler" in filepath_str.lower():
         return "MoLeR"

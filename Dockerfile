@@ -118,9 +118,20 @@ USER app
 
 RUN conda env create -f reinvent-randomized/environment.yml
 
+# Paccmann
+
+USER root
+
+COPY paccmann_chemistry/examples/conda.yml paccmann_chemistry/examples/conda.yml
+RUN chmod -R a+w paccmann_chemistry/
+
+USER app
+
+RUN conda env create -f paccmann_chemistry/examples/conda.yml
+
 # End
 
-ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN"
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN:/app/paccmann_chemistry"
 
 # Temp
 
