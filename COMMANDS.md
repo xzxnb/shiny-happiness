@@ -27,6 +27,12 @@ tmux new-session -d -s scc15 'docker-compose run --rm base /bin/bash -c "cd /app
 
 tmux new-session -d -s sdd20 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=discrete general.gpus=3 max_num_atoms=20"'
 tmux new-session -d -s scc20 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=3 max_num_atoms=20"'
+
+tmux new-session -d -s sdd25 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=discrete general.gpus=0 max_num_atoms=25"'
+tmux new-session -d -s scc25 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=0 max_num_atoms=25"'
+
+tmux new-session -d -s sdd30 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=discrete general.gpus=1 max_num_atoms=30"'
+tmux new-session -d -s scc30 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 max_num_atoms=30"'
 ```
 
 ## Moler
