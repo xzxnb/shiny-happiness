@@ -40,13 +40,14 @@ tmux new-session -d -s scc30 'docker-compose run --rm base /bin/bash -c "cd /app
 <https://pypi.org/project/molecule-generation/>
 
 ```bash
-cp data/molecules/size_15/train.smi data/molecules/size_15/train.smiles
-cp data/molecules/size_15/train.smi data/molecules/size_15/valid.smiles
-cp data/molecules/size_15/train.smi data/molecules/size_15/test.smiles
+cp data/molecules/size_30/train.smi data/molecules/size_30/train.smiles
+cp data/molecules/size_30/train.smi data/molecules/size_30/valid.smiles
+cp data/molecules/size_30/train.smi data/molecules/size_30/test.smiles
 ```
 
 ```bash
-dc run --rm base molecule_generation preprocess data/molecules/size_15/ data/molecules/size_15_moler/ data/molecules/size_15_moler_tracke/
+dc run --rm base molecule_generation preprocess data/molecules/size_25/ data/molecules/size_25_moler/ data/molecules/size_25_moler_tracke/ && \
+dc run --rm base molecule_generation preprocess data/molecules/size_30/ data/molecules/size_30_moler/ data/molecules/size_30_moler_tracke/
 ```
 
 ```bash
@@ -54,6 +55,8 @@ dc run --rm base molecule_generation train MoLeR data/molecules/size_8_moler_tra
 dc run --rm base molecule_generation train MoLeR data/molecules/size_12_moler_tracke/ --save-dir output_moler_12 && \
 dc run --rm base molecule_generation train MoLeR data/molecules/size_15_moler_tracke/ --save-dir output_moler_15 && \
 dc run --rm base molecule_generation train MoLeR data/molecules/size_20_moler_tracke/ --save-dir output_moler_20 && \
+dc run --rm base molecule_generation train MoLeR data/molecules/size_25_moler_tracke/ --save-dir output_moler_25 && \
+dc run --rm base molecule_generation train MoLeR data/molecules/size_30_moler_tracke/ --save-dir output_moler_30 && \
 ```
 
 ```bash
@@ -61,6 +64,8 @@ dc run --rm base molecule_generation sample output_moler_8 100000 > output_moler
 dc run --rm base molecule_generation sample output_moler_12 100000 > output_moler_12/generated_smiles.txt && \
 dc run --rm base molecule_generation sample output_moler_15 100000 > output_moler_15/generated_smiles.txt && \
 dc run --rm base molecule_generation sample output_moler_20 100000 > output_moler_20/generated_smiles.txt
+dc run --rm base molecule_generation sample output_moler_25 100000 > output_moler_25/generated_smiles.txt
+dc run --rm base molecule_generation sample output_moler_30 100000 > output_moler_30/generated_smiles.txt
 ```
 
 ## DEG
