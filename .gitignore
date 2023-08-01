@@ -5,6 +5,7 @@ outputs/
 output_*
 .netrc
 logs
+report
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

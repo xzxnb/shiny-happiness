@@ -1,5 +1,6 @@
 import re
 import typer
+import pandas as pd
 import matplotlib.pyplot as plt
 import itertools as it
 from typing import Union
@@ -14,6 +15,7 @@ plt.rcParams["text.usetex"] = True
 
 
 def main(log: bool = False):
+    Path("report").mkdir(exist_ok=True, parents=True)
     all_generated_files = (
         list(Path(".").rglob("*generated_smiles.txt"))
         + list(Path(".").rglob("*generated_samples.txt"))
@@ -22,12 +24,12 @@ def main(log: bool = False):
 
     for max_num_atoms in tqdm(
         [
-            30,
-            25,
-            20,
-            15,
-            12,
             8,
+            12,
+            15,
+            20,
+            25,
+            30,
         ],
         desc="Plotting molecule history",
     ):
@@ -81,6 +83,7 @@ def plot_history(
 ):
     print(f"Plotting history for {max_num_atoms} atoms")
     val_canons = load_smiles_as_canon(max_num_atoms)
+    val_canons_set = set(val_canons)
 
     group_to_methods = {
         "everything": (
@@ -96,13 +99,12 @@ def plot_history(
     }
 
     group_to_fig_axe = {
-        key: plt.subplots(1, 1, figsize=(12, 12)) for key in group_to_methods.keys()
+        key: plt.subplots(1, 3, figsize=(12 * 3, 12)) for key in group_to_methods.keys()
     }
 
-    for _, ax in group_to_fig_axe.values():
-        ax.set_ylim([0, 1])
-        ax.set_xlabel("Number of generated unique molecules sorted by frequency")
-        ax.set_ylabel("Ratio of molecules generated from validation dataset")
+    for _, axes in group_to_fig_axe.values():
+        for ax in axes:
+            ax.set_ylim([0, 1])
 
     molecules_counters = []
     methods = set()
@@ -154,14 +156,19 @@ def plot_history(
             reverse=True,
         )
 
-        sorted_val_sizes, sorted_val_percs = get_cumulative_perc_deduplicated(
-            generated_molecules_sorted, val_canons
-        )
+        (
+            sorted_val_sizes,
+            sorted_val_recalls,
+            sorted_val_precisions,
+        ) = get_cumulative_perc_deduplicated(generated_molecules_sorted, val_canons)
 
         # If there are multiple same runs, take one that were running the longest (generated most molecules)
         if method_to_highest_generated[method] >= len(sorted_val_sizes):
             print("Warning - skipping", method, file)
             continue
+
+        ranked_conf_matrix = get_conf_matrix(molecule_counter, val_canons)
+        ranked_conf_matrix.to_csv(f"report/conf_matrix_{max_num_atoms}_{method}.csv")
 
         method_to_highest_generated[method] = len(sorted_val_sizes)
         method_to_data[method] = (
@@ -170,7 +177,8 @@ def plot_history(
             color,
             history_dedup,
             sorted_val_sizes,
-            sorted_val_percs,
+            sorted_val_recalls,
+            sorted_val_precisions,
         )
 
     try:
@@ -178,9 +186,10 @@ def plot_history(
     except ValueError:
         print("No data to plot for ", max_num_atoms)
         return
+    unique_in_val_number = len(val_canons_set)
 
     for group, methods in group_to_methods.items():
-        fig, axe = group_to_fig_axe[group]
+        fig, axes = group_to_fig_axe[group]
         for method in methods:
             if method not in method_to_data:
                 continue
@@ -190,39 +199,112 @@ def plot_history(
                 color,
                 history_dedup,
                 sorted_val_sizes,
-                sorted_val_percs,
+                sorted_val_recalls,
+                sorted_val_precisions,
             ) = method_to_data[method]
             assert method == method_2, (method, method_2)
             label = method
-            axe.plot(
+            axes[0].set_xlabel(
+                "Number of generated unique molecules sorted by frequency"
+            )
+            axes[0].set_ylabel("How many from validation data was generated (recall)")
+            axes[0].plot(
                 sorted_val_sizes[:max_generated_number],
-                sorted_val_percs[:max_generated_number],
+                sorted_val_recalls[:max_generated_number],
+                style,
+                label=label,
+                alpha=1.0,
+                color=color,
+            )
+            axes[1].set_xlabel(
+                "Number of generated unique molecules sorted by frequency"
+            )
+            axes[1].set_ylabel(
+                "How many from generated molecules are in validation data (precision)"
+            )
+            axes[1].plot(
+                sorted_val_sizes[:unique_in_val_number],
+                sorted_val_precisions[:unique_in_val_number],
+                style,
+                label=label,
+                alpha=1.0,
+                color=color,
+            )
+            axes[2].set_xlabel("Recall")
+            axes[2].set_ylabel("Precision")
+            axes[2].set_xlim([0, 1])
+            axes[2].plot(
+                sorted_val_recalls[:unique_in_val_number],
+                sorted_val_precisions[:unique_in_val_number],
                 style,
                 label=label,
                 alpha=1.0,
                 color=color,
             )
 
-    for group, (fig, ax) in group_to_fig_axe.items():
-        ax.legend(loc="lower right")
-        if log:
-            ax.set_yscale("log")
-        fig.savefig(f"molecule_history_{max_num_atoms}_{group}.jpg")
+    for group, (fig, axes) in group_to_fig_axe.items():
+        for ax in axes:
+            ax.legend(loc="lower right")
+            if log:
+                ax.set_yscale("log")
+            fig.savefig(f"report/molecule_history_{max_num_atoms}_{group}.jpg")
+
+
+def get_conf_matrix(molecule_counter, val_canons) -> pd.DataFrame:
+    val_canons_set = set(val_canons)
+    counts = sorted(set(molecule_counter.values()), reverse=True)
+
+    data = []
+
+    for rank in counts:
+        generated_molecules_above_rank = set(
+            [m for m, c in molecule_counter.items() if c >= rank]
+        )
+        generated_molecules_below_rank = set(
+            [m for m, c in molecule_counter.items() if c < rank]
+        )
+
+        tp = len(generated_molecules_above_rank & val_canons_set)
+        fp = len(generated_molecules_above_rank - val_canons_set)
+        tn = len(generated_molecules_below_rank - val_canons_set)
+        fn = len(generated_molecules_below_rank & val_canons_set)
+
+        data.append(
+            {
+                "len_val_canons_set": len(val_canons_set),
+                "len_generated_molecules_above_rank": len(
+                    generated_molecules_above_rank
+                ),
+                "len_generated_molecules_below_rank": len(
+                    generated_molecules_below_rank
+                ),
+                "rank": rank,
+                "tp": tp,
+                "fp": fp,
+                "tn": tn,
+                "fn": fn,
+            }
+        )
+
+    df = pd.DataFrame.from_records(data)
+    return df
 
 
 def get_cumulative_perc_deduplicated(gen_smiles, dataset_smiles):
     dataset_smiles_set = set(dataset_smiles)
 
-    percs = []
+    recalls = []
+    precisions = []
     sizes = []
     subset = set()
 
     for molecule in tqdm(gen_smiles):
         subset.add(molecule)
-        percs.append(len(subset & dataset_smiles_set) / len(dataset_smiles))
+        recalls.append(len(subset & dataset_smiles_set) / len(dataset_smiles_set))
+        precisions.append(len(subset & dataset_smiles_set) / len(subset))
         sizes.append(len(subset))
 
-    return sizes, percs
+    return sizes, recalls, precisions
 
 
 def get_molecule_history(filepath: Union[str, Path]) -> list:
