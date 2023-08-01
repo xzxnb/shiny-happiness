@@ -131,12 +131,25 @@ RUN conda env create -f paccmann_chemistry/examples/conda.yml
 
 # rgcvae
 
+RUN pip install Cython
+
 USER root
 
 COPY rgcvae/rgivae_env.yml rgcvae/rgivae_env.yml
 RUN chmod -R a+w rgcvae/
 
 RUN conda env create -f rgcvae/rgivae_env.yml
+
+USER app
+
+# ccgvae
+
+USER root
+
+COPY ccgvae/ccgvae_env.yml ccgvae/ccgvae_env.yml
+RUN chmod -R a+w ccgvae/
+
+RUN conda env create -f ccgvae/ccgvae_env.yml
 
 USER app
 
