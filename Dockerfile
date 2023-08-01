@@ -129,9 +129,20 @@ USER app
 
 RUN conda env create -f paccmann_chemistry/examples/conda.yml
 
+# rgcvae
+
+USER root
+
+COPY rgcvae/rgivae_env.yml rgcvae/rgivae_env.yml
+RUN chmod -R a+w rgcvae/
+
+RUN conda env create -f rgcvae/rgivae_env.yml
+
+USER app
+
 # End
 
-ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN:/app/paccmann_chemistry"
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN:/app/paccmann_chemistry:/app/rgcvae"
 
 # Temp
 
