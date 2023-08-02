@@ -117,7 +117,6 @@ dc run --rm base python Molecule-RNN/sample.py /app/output_rnn_20_char/ 100000
 
 ```bash
 dc run --rm base bash
-export PYTHONPATH="/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN:/app/paccmann_chemistry"
 conda init && source ~/.bashrc && conda activate paccmann_chemistry && pip install tensorboard
 python paccmann_chemistry/examples/train_vae.py \
     /app/data/molecules/size_30/train.smi \
@@ -126,4 +125,14 @@ python paccmann_chemistry/examples/train_vae.py \
     output_paccmann_vae_30 \
     /app/paccmann_chemistry/examples/example_params.json \
     paccmann_vae_30
+```
+
+### CCGVAE
+
+```bash
+dc run --rm base bash
+conda init && source ~/.bashrc && conda activate ccgvae
+
+
+python ccgvae/make_dataset.py 8
 ```
