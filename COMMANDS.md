@@ -40,13 +40,13 @@ tmux new-session -d -s scc30 'docker-compose run --rm base /bin/bash -c "cd /app
 <https://pypi.org/project/molecule-generation/>
 
 ```bash
-cp data/molecules/size_30/train.smi data/molecules/size_30/train.smiles
-cp data/molecules/size_30/train.smi data/molecules/size_30/valid.smiles
-cp data/molecules/size_30/train.smi data/molecules/size_30/test.smiles
+cp data/molecules/size_8/train.smi data/molecules/size_8/train.smiles && \
+cp data/molecules/size_8/train.smi data/molecules/size_8/valid.smiles && \
+cp data/molecules/size_8/train.smi data/molecules/size_8/test.smiles
 ```
 
 ```bash
-dc run --rm base molecule_generation preprocess data/molecules/size_25/ data/molecules/size_25_moler/ data/molecules/size_25_moler_tracke/ && \
+dc run --rm base molecule_generation preprocess data/molecules/size_8/ data/molecules/size_8_moler/ data/molecules/size_8_moler_tracke/ && \
 dc run --rm base molecule_generation preprocess data/molecules/size_30/ data/molecules/size_30_moler/ data/molecules/size_30_moler_tracke/
 ```
 
@@ -82,9 +82,9 @@ python retro_star_listener.py --filenames "output_deg_8/generated_samples.txt" -
 ## RNN
 
 ```bash
-dc run --rm base python Molecule-RNN/vocab/chembl_selfies_vocab.py /app/data/molecules/size_15/train.smi /app/data/molecules/size_15/selfies.rnn.vocab
-dc run --rm base python Molecule-RNN/vocab/chembl_regex_vocab.py /app/data/molecules/size_15/train.smi /app/data/molecules/size_15/regex.rnn.vocab
-dc run --rm base python Molecule-RNN/vocab/chembl_char_vocab.py /app/data/molecules/size_15/train.smi /app/data/molecules/size_15/char.rnn.vocab
+dc run --rm base python Molecule-RNN/vocab/chembl_selfies_vocab.py /app/data/molecules/size_8/train.smi /app/data/molecules/size_8/selfies.rnn.vocab && \
+dc run --rm base python Molecule-RNN/vocab/chembl_regex_vocab.py /app/data/molecules/size_8/train.smi /app/data/molecules/size_8/regex.rnn.vocab && \
+dc run --rm base python Molecule-RNN/vocab/chembl_char_vocab.py /app/data/molecules/size_8/train.smi /app/data/molecules/size_8/char.rnn.vocab
 ```
 
 ```bash
@@ -127,12 +127,15 @@ python paccmann_chemistry/examples/train_vae.py \
     paccmann_vae_30
 ```
 
-### CCGVAE
+### CCGVAE -- not working
 
 ```bash
 dc run --rm base bash
 conda init && source ~/.bashrc && conda activate ccgvae
 
+export PYTHONPATH="/app/ccgvae"
+cd ccgvae
 
-python ccgvae/make_dataset.py 8
+python make_dataset.py 8
+python CCGVAE.py --size 8
 ```

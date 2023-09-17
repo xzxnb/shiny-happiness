@@ -8,6 +8,7 @@ Options:
     --dataset NAME      QM9 or ZINC
 """
 
+import shutil
 import sys
 import json
 import os
@@ -20,48 +21,12 @@ from rdkit import Chem
 from rdkit.Chem import QED
 
 import utils
+from utils import build_dataset_info, read_our_data
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 # get current directory in order to work with full path and not dynamic
 current_dir = os.path.dirname(os.path.realpath(__file__))
-
-
-def build_dataset_info(dataset):
-    atom_types = set()
-    atom_to_maximum_valence = {}
-
-    for split, split_smiles in dataset.items():
-        for i, smiles in enumerate(split_smiles):
-            mol = Chem.MolFromSmiles(smiles)
-            atoms = mol.GetAtoms()
-            for atom in atoms:
-                valence = atom.GetTotalValence()
-                symbol = atom.GetSymbol()
-                charge = atom.GetFormalCharge()
-                atom_str = "%s%i(%i)" % (symbol, valence, charge)
-                atom_types.add(atom_str)
-
-                atom_to_maximum_valence[atom_str] = max(
-                    atom_to_maximum_valence.get(atom_str, 0), valence
-                )
-
-    atom_types = sorted(atom_types)
-    number_to_atom = {i: atom for i, atom in enumerate(atom_types)}
-
-    return {
-        "atom_types": atom_types,
-        "number_to_atom": number_to_atom,
-        "maximum_valence": {
-            atom_types.index(atom): maxval
-            for atom, maxval in atom_to_maximum_valence.items()
-        },
-        "max_valence_value": sum(atom_to_maximum_valence.values()) + 1,
-        "max_n_atoms": size,
-        "hist_dim": max(atom_to_maximum_valence.values()),
-        "n_valence": max(atom_to_maximum_valence.values()),
-        "bucket_sizes": np.array(list(range(4, 28, 2)) + [29]),
-    }
 
 
 def train_valid_split(dataset):
@@ -154,17 +119,6 @@ def preprocess(size, raw_data, dataset):
     print("Test molecules = " + str(len(processed_data["test"])))
 
 
-def read_our_data(path):
-    smiles_train = [line.strip() for line in open(path + "/train.smi") if line.strip()]
-    smiles_valid = [line.strip() for line in open(path + "/valid.smi") if line.strip()]
-    smiles_test = [line.strip() for line in open(path + "/test.smi") if line.strip()]
-    return {
-        "train": smiles_train,
-        "valid": smiles_valid,
-        "test": smiles_test,
-    }
-
-
 if __name__ == "__main__":
     size = sys.argv[1]
     print(size)
@@ -175,7 +129,7 @@ if __name__ == "__main__":
 
     data = read_our_data(dataset)
 
-    dataset_info = build_dataset_info(data)
+    dataset_info = build_dataset_info(data, size)
     pprint(dataset_info)
     raw_data = train_valid_split(data)
     preprocess(size, raw_data, dataset)

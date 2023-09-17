@@ -5,6 +5,7 @@ import threading
 from collections import deque
 from threading import Thread
 
+from functools import lru_cache
 import numpy as np
 import tensorflow as tf
 from rdkit import Chem
@@ -16,39 +17,173 @@ LARGE_NUMBER = 1e10
 geometry_numbers = [3, 4, 5, 6]  # triangle, square, pentagon, hexagon
 
 # bond mapping
-bond_dict = {'SINGLE': 0, 'DOUBLE': 1, 'TRIPLE': 2, "AROMATIC": 3}
-number_to_bond = {0: Chem.rdchem.BondType.SINGLE, 1: Chem.rdchem.BondType.DOUBLE,
-                  2: Chem.rdchem.BondType.TRIPLE, 3: Chem.rdchem.BondType.AROMATIC}
+bond_dict = {"SINGLE": 0, "DOUBLE": 1, "TRIPLE": 2, "AROMATIC": 3}
+number_to_bond = {
+    0: Chem.rdchem.BondType.SINGLE,
+    1: Chem.rdchem.BondType.DOUBLE,
+    2: Chem.rdchem.BondType.TRIPLE,
+    3: Chem.rdchem.BondType.AROMATIC,
+}
 
 
+def read_our_data(path):
+    smiles_train = [line.strip() for line in open(path + "/train.smi") if line.strip()]
+    smiles_valid = [line.strip() for line in open(path + "/valid.smi") if line.strip()]
+    smiles_test = [line.strip() for line in open(path + "/test.smi") if line.strip()]
+    return {
+        "train": smiles_train,
+        "valid": smiles_valid,
+        "test": smiles_test,
+    }
+
+
+def build_dataset_info(data, size):
+    size = int(size)
+    atom_types = set()
+    atom_to_maximum_valence = {}
+
+    for split, split_smiles in data.items():
+        for i, smiles in enumerate(split_smiles):
+            mol = Chem.MolFromSmiles(smiles)
+            atoms = mol.GetAtoms()
+            for atom in atoms:
+                valence = atom.GetTotalValence()
+                symbol = atom.GetSymbol()
+                charge = atom.GetFormalCharge()
+                atom_str = "%s%i(%i)" % (symbol, valence, charge)
+                atom_types.add(atom_str)
+                atom_to_maximum_valence[atom_str] = max(
+                    atom_to_maximum_valence.get(atom_str, 0), valence
+                )
+
+    atom_types = sorted(atom_types)
+    number_to_atom = {
+        i: atom[0] for i, atom in enumerate(atom_types)
+    }  # [0] to test number_to_symbol
+    max_n_atoms = len(number_to_atom)
+
+    info = {
+        "atom_types": atom_types,
+        "number_to_atom": number_to_atom,
+        "maximum_valence": {
+            atom_types.index(atom): maxval
+            for atom, maxval in atom_to_maximum_valence.items()
+        },
+        "max_valence_value": sum(atom_to_maximum_valence.values()) + 1,
+        "max_n_atoms": max_n_atoms,
+        "hist_dim": max_n_atoms + 1,
+        "n_valence": max(atom_to_maximum_valence.values()),
+        "bucket_sizes": np.array([max_n_atoms - 2, max_n_atoms - 1]),
+    }
+    print(info)
+    return info
+
+
+@lru_cache(maxsize=3)
 def dataset_info(dataset):
-    if dataset == 'qm9':
-        return {'atom_types': ["H", "C", "N", "O", "F"],
-                'maximum_valence': {0: 1, 1: 4, 2: 3, 3: 2, 4: 1},
-                'hist_dim': 4,
-                'max_valence_value': 9,
-                'max_n_atoms': 30,
-                'number_to_atom': {0: "H", 1: "C", 2: "N", 3: "O", 4: "F"},
-                'bucket_sizes': np.array(list(range(4, 28, 2)) + [29])
-                }
-    elif dataset == 'zinc':
+    if "size_" in dataset:
+        size = int(dataset.split("size_")[1].strip("/"))
+        data = read_our_data(dataset)
+        dataset_info = build_dataset_info(data, size)
+        return dataset_info
+
+    elif dataset == "qm9":
         return {
-            'atom_types': ['Br1(0)', 'C4(0)', 'Cl1(0)', 'F1(0)', 'H1(0)', 'I1(0)', 'N2(-1)', 'N3(0)', 'N4(1)', 'O1(-1)',
-                           'O2(0)', 'S2(0)', 'S4(0)', 'S6(0)'],
-            'maximum_valence': {0: 1, 1: 4, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 3, 8: 4, 9: 1, 10: 2, 11: 2, 12: 4, 13: 6},
-            'hist_dim': 6,
-            'n_valence': 6,
-            'max_valence_value': 34,
-            'max_n_atoms': 85,
-            'number_to_atom': {0: 'Br', 1: 'C', 2: 'Cl', 3: 'F', 4: 'H', 5: 'I', 6: 'N', 7: 'N', 8: 'N', 9: 'O',
-                               10: 'O',
-                               11: 'S', 12: 'S', 13: 'S'},
-            'bucket_sizes': np.array(
-                [28, 31, 33, 35, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 53, 55, 58,
-                 84])
+            "atom_types": ["H", "C", "N", "O", "F"],
+            "maximum_valence": {0: 1, 1: 4, 2: 3, 3: 2, 4: 1},
+            "hist_dim": 4,
+            "max_valence_value": 9,
+            "max_n_atoms": 30,
+            "number_to_atom": {0: "H", 1: "C", 2: "N", 3: "O", 4: "F"},
+            "bucket_sizes": np.array(list(range(4, 28, 2)) + [50]),
+        }
+    elif dataset == "zinc":
+        return {
+            "atom_types": [
+                "Br1(0)",
+                "C4(0)",
+                "Cl1(0)",
+                "F1(0)",
+                "H1(0)",
+                "I1(0)",
+                "N2(-1)",
+                "N3(0)",
+                "N4(1)",
+                "O1(-1)",
+                "O2(0)",
+                "S2(0)",
+                "S4(0)",
+                "S6(0)",
+            ],
+            "maximum_valence": {
+                0: 1,
+                1: 4,
+                2: 1,
+                3: 1,
+                4: 1,
+                5: 1,
+                6: 2,
+                7: 3,
+                8: 4,
+                9: 1,
+                10: 2,
+                11: 2,
+                12: 4,
+                13: 6,
+            },
+            "hist_dim": 6,
+            "n_valence": 6,
+            "max_valence_value": 34,
+            "max_n_atoms": 85,
+            "number_to_atom": {
+                0: "Br",
+                1: "C",
+                2: "Cl",
+                3: "F",
+                4: "H",
+                5: "I",
+                6: "N",
+                7: "N",
+                8: "N",
+                9: "O",
+                10: "O",
+                11: "S",
+                12: "S",
+                13: "S",
+            },
+            "bucket_sizes": np.array(
+                [
+                    28,
+                    31,
+                    33,
+                    35,
+                    37,
+                    38,
+                    39,
+                    40,
+                    41,
+                    42,
+                    43,
+                    44,
+                    45,
+                    46,
+                    47,
+                    48,
+                    49,
+                    50,
+                    51,
+                    53,
+                    55,
+                    58,
+                    84,
+                ]
+            ),
         }
     else:
-        print("Error: The datasets that you could use are QM9 or ZINC, not " + str(dataset))
+        print(
+            "Error: The datasets that you could use are QM9 or ZINC, not "
+            + str(dataset)
+        )
         exit(1)
 
 
@@ -104,7 +239,10 @@ def sample_node_symbol(all_node_symbol_prob, all_lengths, dataset):
     for graph_idx, graph_prob in enumerate(all_node_symbol_prob):
         node_symbol = []
         for node_idx in range(all_lengths[graph_idx]):
-            symbol = np.random.choice(np.arange(len(dataset_info(dataset)['atom_types'])), p=graph_prob[node_idx])
+            symbol = np.random.choice(
+                np.arange(len(dataset_info(dataset)["atom_types"])),
+                p=graph_prob[node_idx],
+            )
             node_symbol.append(symbol)
         all_node_symbol.append(node_symbol)
     return all_node_symbol
@@ -116,7 +254,9 @@ def sample_argmax_node_symbol(all_node_symbol_prob, all_lengths, dataset):
     for graph_idx, graph_prob in enumerate(all_node_symbol_prob):
         node_symbol = []
         for node_idx in range(all_lengths[graph_idx]):
-            symbol = np.arange(len(dataset_info(dataset)['atom_types']))[np.argmax(graph_prob[node_idx])]
+            symbol = np.arange(len(dataset_info(dataset)["atom_types"]))[
+                np.argmax(graph_prob[node_idx])
+            ]
             node_symbol.append(symbol)
         all_node_symbol.append(node_symbol)
     return all_node_symbol
@@ -163,16 +303,20 @@ def bfs_distance(start, adj_list, is_dense=False):
 
 
 def get_initial_valence(node_symbol, dataset):
-    return [dataset_info(dataset)['maximum_valence'][s] for s in node_symbol]
+    return [dataset_info(dataset)["maximum_valence"][s] for s in node_symbol]
 
 
 def add_atoms(new_mol, node_symbol, dataset):
     for number in node_symbol:
-        if dataset == 'qm9' or dataset == 'cep':
-            idx = new_mol.AddAtom(Chem.Atom(dataset_info(dataset)['number_to_atom'][number]))
-        elif dataset == 'zinc':
-            new_atom = Chem.Atom(dataset_info(dataset)['number_to_atom'][number])
-            charge_num = int(dataset_info(dataset)['atom_types'][number].split('(')[1].strip(')'))
+        if dataset == "qm9" or dataset == "cep":
+            idx = new_mol.AddAtom(
+                Chem.Atom(dataset_info(dataset)["number_to_atom"][number])
+            )
+        elif dataset == "zinc" or "size_" in dataset:
+            new_atom = Chem.Atom(dataset_info(dataset)["number_to_atom"][number])
+            charge_num = int(
+                dataset_info(dataset)["atom_types"][number].split("(")[1].strip(")")
+            )
             new_atom.SetFormalCharge(charge_num)
             new_mol.AddAtom(new_atom)
 
@@ -216,31 +360,45 @@ def to_graph(smiles, dataset):
     edges = []
     nodes = []
     for bond in mol.GetBonds():
-        edges.append((bond.GetBeginAtomIdx(), bond_dict[str(bond.GetBondType())], bond.GetEndAtomIdx()))
+        edges.append(
+            (
+                bond.GetBeginAtomIdx(),
+                bond_dict[str(bond.GetBondType())],
+                bond.GetEndAtomIdx(),
+            )
+        )
         assert bond_dict[str(bond.GetBondType())] != 3
     for atom in mol.GetAtoms():
-        if dataset == 'qm9':
-            nodes.append(onehot(dataset_info(dataset)['atom_types'].index(atom.GetSymbol()),
-                                len(dataset_info(dataset)['atom_types'])))
-        elif dataset == 'zinc':  # transform using "<atom_symbol><valence>(<charge>)"  notation
+        if dataset == "qm9":
+            nodes.append(
+                onehot(
+                    dataset_info(dataset)["atom_types"].index(atom.GetSymbol()),
+                    len(dataset_info(dataset)["atom_types"]),
+                )
+            )
+        else:  # transform using "<atom_symbol><valence>(<charge>)"  notation
             symbol = atom.GetSymbol()
             valence = atom.GetTotalValence()
             charge = atom.GetFormalCharge()
             atom_str = "%s%i(%i)" % (symbol, valence, charge)
 
-            if atom_str not in dataset_info(dataset)['atom_types']:
-                print('Unrecognized atom type %s' % atom_str)
+            if atom_str not in dataset_info(dataset)["atom_types"]:
+                print("Unrecognized atom type %s" % atom_str)
                 return [], []
 
             nodes.append(
-                onehot(dataset_info(dataset)['atom_types'].index(atom_str), len(dataset_info(dataset)['atom_types'])))
+                onehot(
+                    dataset_info(dataset)["atom_types"].index(atom_str),
+                    len(dataset_info(dataset)["atom_types"]),
+                )
+            )
 
     return nodes, edges
 
 
 def shape_count(dataset, remove_print=False, all_smiles=None):
     if all_smiles == None:
-        with open('generated_smiles_%s.txt' % dataset, 'rb') as f:
+        with open("generated_smiles_%s.txt" % dataset, "rb") as f:
             all_smiles = set(pickle.load(f))
 
     geometry_counts = [0] * len(geometry_numbers)
@@ -272,7 +430,9 @@ def check_adjacent_sparse(adj_list, node, neighbor_in_doubt):
 
 def glorot_init(shape):
     initialization_range = np.sqrt(6.0 / (shape[-2] + shape[-1]))
-    return np.random.uniform(low=-initialization_range, high=initialization_range, size=shape).astype(np.float32)
+    return np.random.uniform(
+        low=-initialization_range, high=initialization_range, size=shape
+    ).astype(np.float32)
 
 
 class ThreadedIterator:
@@ -286,7 +446,9 @@ class ThreadedIterator:
 
     def worker(self, original_iterator):
         for element in original_iterator:
-            assert element is not None, 'By convention, iterator elements must not be None'
+            assert (
+                element is not None
+            ), "By convention, iterator elements must not be None"
             self.__queue.put(element, block=True)
         self.__queue.put(None, block=True)
 
@@ -310,10 +472,14 @@ class MLP(object):
     def make_network_params(self):
         dims = [self.in_size] + self.hid_sizes + [self.out_size]
         weight_sizes = list(zip(dims[:-1], dims[1:]))
-        weights = [tf.Variable(self.init_weights(s), name='MLP_W_layer%i' % i)
-                   for (i, s) in enumerate(weight_sizes)]
-        biases = [tf.Variable(np.zeros(s[-1]).astype(np.float32), name='MLP_b_layer%i' % i)
-                  for (i, s) in enumerate(weight_sizes)]
+        weights = [
+            tf.Variable(self.init_weights(s), name="MLP_W_layer%i" % i)
+            for (i, s) in enumerate(weight_sizes)
+        ]
+        biases = [
+            tf.Variable(np.zeros(s[-1]).astype(np.float32), name="MLP_b_layer%i" % i)
+            for (i, s) in enumerate(weight_sizes)
+        ]
 
         network_params = {
             "weights": weights,
@@ -323,7 +489,9 @@ class MLP(object):
         return network_params
 
     def init_weights(self, shape):
-        return np.sqrt(6.0 / (shape[-2] + shape[-1])) * (2 * np.random.rand(*shape).astype(np.float32) - 1)
+        return np.sqrt(6.0 / (shape[-2] + shape[-1])) * (
+            2 * np.random.rand(*shape).astype(np.float32) - 1
+        )
 
     def __call__(self, inputs):
         acts = inputs
@@ -334,7 +502,7 @@ class MLP(object):
         return last_hidden
 
 
-class Graph():
+class Graph:
     def __init__(self, V, g):
         self.V = V
         self.graph = g
@@ -350,21 +518,20 @@ class Graph():
     # and parent to detect cycle in subgraph
     # reachable from vertex v.
     def isCyclicUtil(self, v, visited, parent):
-
         # Mark current node as visited
         visited[v] = True
 
-        # Recur for all the vertices adjacent 
+        # Recur for all the vertices adjacent
         # for this vertex
         for i in self.graph[v]:
-            # If an adjacent is not visited, 
+            # If an adjacent is not visited,
             # then recur for that adjacent
             if visited[i] == False:
                 if self.isCyclicUtil(i, visited, v) == True:
                     return True
 
-            # If an adjacent is visited and not 
-            # parent of current vertex, then there 
+            # If an adjacent is visited and not
+            # parent of current vertex, then there
             # is a cycle.
             elif i != parent:
                 return True
@@ -374,19 +541,19 @@ class Graph():
     # Returns true if the graph is a tree,
     # else false.
     def isTree(self):
-        # Mark all the vertices as not visited 
+        # Mark all the vertices as not visited
         # and not part of recursion stack
         visited = [False] * self.V
 
-        # The call to isCyclicUtil serves multiple 
-        # purposes. It returns true if graph reachable 
-        # from vertex 0 is cyclcic. It also marks 
+        # The call to isCyclicUtil serves multiple
+        # purposes. It returns true if graph reachable
+        # from vertex 0 is cyclcic. It also marks
         # all vertices reachable from 0.
         if self.isCyclicUtil(0, visited, -1) == True:
             return False
 
         # If we find a vertex which is not reachable
-        # from 0 (not marked by isCyclicUtil(), 
+        # from 0 (not marked by isCyclicUtil(),
         # then we return false
         for i in range(self.V):
             if visited[i] == False:
@@ -409,7 +576,9 @@ def select_best(all_mol):
 def incre_adj_mat_to_dense(incre_adj_mat, num_edge_types, maximum_vertice_num):
     new_incre_adj_mat = []
     for sparse_incre_adj_mat in incre_adj_mat:
-        dense_incre_adj_mat = np.zeros((num_edge_types, maximum_vertice_num, maximum_vertice_num))
+        dense_incre_adj_mat = np.zeros(
+            (num_edge_types, maximum_vertice_num, maximum_vertice_num)
+        )
         for current, adj_list in sparse_incre_adj_mat.items():
             for neighbor, edge_type in adj_list:
                 dense_incre_adj_mat[edge_type][current][neighbor] = 1
@@ -461,7 +630,9 @@ def edge_type_labels_to_dense(edge_type_labels, maximum_vertice_num, num_edge_ty
     for labels_sparse in edge_type_labels:
         labels_dense = np.zeros([num_edge_types, maximum_vertice_num])
         for node_in_focus, neighbor, bond in labels_sparse:
-            labels_dense[bond][neighbor] = 1 / float(len(labels_sparse))  # fix the probability bug here.
+            labels_dense[bond][neighbor] = 1 / float(
+                len(labels_sparse)
+            )  # fix the probability bug here.
         new_edge_type_labels.append(labels_dense)
     return new_edge_type_labels  # [number_iteration, 3, maximum_vertice_num]
 
@@ -489,8 +660,10 @@ def edge_labels_to_dense(edge_labels, maximum_vertice_num):
 class ThreadWithReturnValue(object):
     def __init__(self, target=None, args=(), **kwargs):
         self._que = queue.Queue()
-        self._t = Thread(target=lambda q, arg1, kwargs1: q.put(target(*arg1, **kwargs1)),
-                         args=(self._que, args, kwargs), )
+        self._t = Thread(
+            target=lambda q, arg1, kwargs1: q.put(target(*arg1, **kwargs1)),
+            args=(self._que, args, kwargs),
+        )
         self._t.start()
 
     def join(self):
