@@ -35,6 +35,8 @@ tmux new-session -d -s sdd30 'docker-compose run --rm base /bin/bash -c "cd /app
 tmux new-session -d -s scc30 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 max_num_atoms=30"'
 ```
 
+For generations at the end, modify `DiGress/configs/general/general_default.yaml` and run again.
+
 ## Moler
 
 <https://pypi.org/project/molecule-generation/>

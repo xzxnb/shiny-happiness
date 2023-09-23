@@ -52,7 +52,10 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
 
         self.dataset_info = dataset_infos
         self.generated_smiles = set()
-        self.generated_smiles_path = Path(cfg.general.name + "_generated_smiles.txt")
+        output_dir = "/app/DiGress/outputs/"
+        self.generated_smiles_path = Path(
+            f"{output_dir}{cfg.general.name}_generated_smiles.txt"
+        )
         if self.generated_smiles_path.exists():
             input(
                 "Generated smiles file already exists. Press enter to continue and overwrite it."
@@ -290,7 +293,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                 self.dataset_info.val_smiles_set & self.generated_smiles
             ) / len(self.dataset_info.val_smiles_set)
             print(f"So far generated {perc_generated} of validation")
-            wandb.log({"test/perc_generated": perc_generated}, commit=False)
+            # wandb.log({"test/perc_generated": perc_generated}, commit=False)
 
             # print("Computing sampling metrics...")
             # self.sampling_metrics(samples, self.name, self.current_epoch, val_counter=-1, test=False)

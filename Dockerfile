@@ -160,3 +160,5 @@ ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/
 # Temp
 
 RUN pip install selfies
+
+RUN pip install torchmetrics==0.11.4

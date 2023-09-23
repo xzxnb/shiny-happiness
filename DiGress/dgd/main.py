@@ -120,7 +120,7 @@ def main(cfg: DictConfig):
     max_num_atoms = int(cfg["max_num_atoms"])
     assert max_num_atoms > 0
 
-    cfg.general.name = f"{cfg.model.type}-{max_num_atoms}"
+    cfg.general.name = f"v2-{cfg.model.type}-{max_num_atoms}"
 
     if dataset_config["name"] in ["sbm", "comm-20", "planar"]:
         if dataset_config["name"] == "sbm":
@@ -250,16 +250,15 @@ def main(cfg: DictConfig):
         model = LiftedDenoisingDiffusion(cfg=cfg, **model_kwargs)
 
     callbacks = []
-    if cfg.train.save_model:
-        checkpoint_callback = ModelCheckpoint(
-            dirpath=f"/app/DiGress/checkpoints/{cfg.general.name}",
-            filename="{epoch}",
-            monitor="val/epoch_NLL",
-            save_top_k=5,
-            mode="min",
-            every_n_epochs=1,
-        )
-        callbacks.append(checkpoint_callback)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=f"/app/DiGress/checkpoints/{cfg.general.name}",
+        filename="{epoch}",
+        monitor="val/epoch_NLL",
+        save_top_k=5,
+        mode="min",
+        every_n_epochs=1,
+    )
+    callbacks.append(checkpoint_callback)
 
     if cfg.train.ema_decay > 0:
         ema_callback = utils.EMA(decay=cfg.train.ema_decay)
@@ -294,8 +293,10 @@ def main(cfg: DictConfig):
         if cfg.general.name not in ["debug", "test"]:
             trainer.test(model, datamodule=datamodule)
     else:
+        model = model.to("cuda" if torch.cuda.is_available() else "cpu")
         n_generated = 0
         while n_generated < cfg.general.samples_to_generate_at_test:
+            print(f"Generated {n_generated}")
             n_generated += model.validation_epoch_end(None)
 
 

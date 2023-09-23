@@ -48,7 +48,10 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         self.model_dtype = torch.float32
         self.T = cfg.model.diffusion_steps
         self.generated_smiles = set()
-        self.generated_smiles_path = Path(cfg.general.name + "_generated_smiles.txt")
+        output_dir = "/app/DiGress/outputs/"
+        self.generated_smiles_path = Path(
+            f"{output_dir}{cfg.general.name}_generated_smiles.txt"
+        )
         if self.generated_smiles_path.exists():
             input(
                 "Generated smiles file already exists. Press enter to continue and overwrite it."
