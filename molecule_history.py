@@ -180,6 +180,7 @@ def plot_history(
             sorted_val_sizes,
             sorted_val_recalls,
             sorted_val_precisions,
+            " (in-training)" if "in-training" in str(file) else " (the-end)",
         )
 
     try:
@@ -202,11 +203,10 @@ def plot_history(
                 sorted_val_sizes,
                 sorted_val_recalls,
                 sorted_val_precisions,
+                type_,
             ) = method_to_data[method]
             assert method == method_2, (method, method_2)
-            label = method + (
-                " (in-training)" if "in-training" in str(file) else " (the-end)"
-            )
+            label = method + type_
             axes[0].set_xlabel(
                 "Number of generated unique molecules sorted by frequency"
             )
