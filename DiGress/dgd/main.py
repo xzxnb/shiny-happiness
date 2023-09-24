@@ -56,9 +56,13 @@ def get_resume(cfg, model_kwargs):
     name = cfg.general.name + "_resume"
     resume = cfg.general.test_only
     if cfg.model.type == "discrete":
-        model = DiscreteDenoisingDiffusion.load_from_checkpoint(resume, **model_kwargs)
+        model = DiscreteDenoisingDiffusion.load_from_checkpoint(
+            resume, smiles_filename_contain="the-end", **model_kwargs
+        )
     else:
-        model = LiftedDenoisingDiffusion.load_from_checkpoint(resume, **model_kwargs)
+        model = LiftedDenoisingDiffusion.load_from_checkpoint(
+            resume, smiles_filename_contain="the-end", **model_kwargs
+        )
     cfg = model.cfg
     cfg.general.test_only = resume
     cfg.general.name = name
