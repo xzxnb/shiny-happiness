@@ -27,6 +27,7 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         visualization_tools,
         extra_features=None,
         domain_features=None,
+        smiles_filename_contain: str = "in-training",
     ):
         super().__init__()
 
@@ -50,7 +51,7 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         self.generated_smiles = set()
         output_dir = "/app/DiGress/outputs/"
         self.generated_smiles_path = Path(
-            f"{output_dir}{cfg.general.name}_generated_smiles.txt"
+            f"{output_dir}{cfg.general.name}_generated_smiles.{smiles_filename_contain}.txt"
         )
         if self.generated_smiles_path.exists():
             input(
