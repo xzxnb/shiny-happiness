@@ -82,6 +82,7 @@ def main(
     vocab_path: str,
     out_dir: str,
 ):
+    out_dir = out_dir.rstrip("/") + "/"
     if Path(out_dir).exists():
         raise ValueError("Output directory already exists!")
 
@@ -229,6 +230,12 @@ def main(
             best_valid_rate = valid_rate
             print("model saved at epoch {}".format(epoch))
             torch.save(model.state_dict(), trained_model_dir)
+
+        print(
+            os.system(
+                f"python Molecule-RNN/sample.py {out_dir} 512 --batch-size 128 --filename generated_samples.in-training.txt --filemode a"
+            )
+        )
 
     # save train and validation losses
     with open(out_dir + "loss.yaml", "w") as f:

@@ -20,7 +20,10 @@ def main(
     result_dir: str,
     n: int,
     batch_size: int = 2048,
+    filename: str = "generated_samples.the-end.txt",
+    filemode: str = "w",
 ):
+    result_dir = result_dir.rstrip("/") + "/"
     num_batches = n // batch_size
 
     # load the configuartion file in output
@@ -53,7 +56,7 @@ def main(
     model.eval()
 
     # sample, filter out invalid molecules, and save the valid molecules
-    out_file = open(result_dir + "generated_samples.txt", "w")
+    out_file = open(result_dir + filename, filemode)
     num_valid, num_invalid = 0, 0
     for _ in tqdm(range(num_batches)):
         # sample molecules as integers
