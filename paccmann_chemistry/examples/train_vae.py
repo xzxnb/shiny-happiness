@@ -261,6 +261,7 @@ def main(parser_namespace):
                 logger=logger,
                 # writer=writer,
                 batch_mode=params.get("batch_mode"),
+                total_epochs=params["epochs"],
             )
             logger.info(f"Epoch {epoch}, took {time() - t:.1f}.")
 

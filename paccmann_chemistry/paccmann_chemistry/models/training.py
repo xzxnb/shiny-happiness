@@ -20,6 +20,8 @@ from ..utils.search import SamplingSearch
 from rdkit import Chem
 from rdkit.Chem import Draw
 
+GENERATED_MOLECULES = 0
+
 
 def test_vae(model, dataloader, logger, input_keep, batch_mode):
     """
@@ -84,6 +86,7 @@ def train_vae(
     logger=None,
     batch_mode="padded",
     writer=None,
+    total_epochs=-1,
 ):  # yapf: disable
     """
     VAE train function.
@@ -123,6 +126,7 @@ def train_vae(
     Returns:
          dict: updated loss_tracker.
     """
+    global GENERATED_MOLECULES
     if loss_tracker is None:
         loss_tracker = {
             "test_loss_a": 10e4,
@@ -209,7 +213,8 @@ def train_vae(
             )
             vae_model.save(save_dir)
             logger.info(f"***SAVING***\t Epoch {epoch}, saved model.")
-        if epoch and epoch % eval_interval == 0:
+        is_final = epoch == total_epochs
+        if is_final or (epoch and epoch % eval_interval == 0):
             vae_model.eval()
             latent_z = torch.randn(1, mu.shape[0], mu.shape[1]).to(device)
             molecule_iter = vae_model.generate(
@@ -220,11 +225,15 @@ def train_vae(
                 end_token=torch.tensor(
                     [train_dataloader.dataset.smiles_language.stop_index]
                 ).to(device),
-                generate_len=generate_len,
+                generate_len=generate_len if not is_final else GENERATED_MOLECULES,
                 search=search,
             )
-            with open(f"{model_dir}/generated_molecules.txt", "a") as f:
+            with open(
+                f"{model_dir}/generated_molecules.{'in-training.txt' if not is_final else 'the-end'}",
+                "a",
+            ) as f:
                 for mol in molecule_iter:
+                    GENERATED_MOLECULES += 1
                     mol = smiles_language.token_indexes_to_smiles(
                         crop_start_stop(mol, smiles_language)
                     )
