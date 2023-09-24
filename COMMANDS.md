@@ -131,7 +131,7 @@ python paccmann_chemistry/examples/train_vae.py \
     paccmann_vae_30
 ```
 
-### CCGVAE -- not working
+## CCGVAE -- not working
 
 ```bash
 dc run --rm base bash
