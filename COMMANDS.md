@@ -64,19 +64,19 @@ dc run --rm base molecule_generation train MoLeR data/molecules/size_30_moler_tr
 ```
 
 ```bash
-dc run --rm base molecule_generation sample output_moler_8 100000 > output_moler_8/generated_smiles.txt && \
-dc run --rm base molecule_generation sample output_moler_12 100000 > output_moler_12/generated_smiles.txt && \
-dc run --rm base molecule_generation sample output_moler_15 100000 > output_moler_15/generated_smiles.txt && \
-dc run --rm base molecule_generation sample output_moler_20 100000 > output_moler_20/generated_smiles.txt
-dc run --rm base molecule_generation sample output_moler_25 100000 > output_moler_25/generated_smiles.txt
-dc run --rm base molecule_generation sample output_moler_30 100000 > output_moler_30/generated_smiles.txt
+dc run --rm base molecule_generation sample output_moler_8 100000 > output_moler_8/generated_smiles.the-end.txt && \
+dc run --rm base molecule_generation sample output_moler_12 100000 > output_moler_12/generated_smiles.the-end.txt && \
+dc run --rm base molecule_generation sample output_moler_15 100000 > output_moler_15/generated_smiles.the-end.txt && \
+dc run --rm base molecule_generation sample output_moler_20 100000 > output_moler_20/generated_smiles.the-end.txt
+dc run --rm base molecule_generation sample output_moler_25 100000 > output_moler_25/generated_smiles.the-end.txt
+dc run --rm base molecule_generation sample output_moler_30 100000 > output_moler_30/generated_smiles.the-end.txt
 ```
 
 ## DEG
 
 ```bash
 conda activate DEG
-python main.py --training_data="../data/molecules/size_8/train.smiles" --output output_deg_8
+python main.py --training_data="../data/molecules/size_8/train.smiles" --output_dir output_deg_8
 ```
 
 ```bash
