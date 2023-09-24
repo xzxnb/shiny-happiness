@@ -39,6 +39,8 @@ For generations at the end, modify `DiGress/configs/general/general_default.yaml
 
 ## Moler
 
+cp moler_patched_train.py ~/.pyenv/versions/3.8.3/lib/python3.8/site-packages/molecule_generation/cli/train.py
+
 <https://pypi.org/project/molecule-generation/>
 
 ```bash
@@ -53,7 +55,7 @@ dc run --rm base molecule_generation preprocess data/molecules/size_30/ data/mol
 ```
 
 ```bash
-dc run --rm base molecule_generation train MoLeR data/molecules/size_8_moler_tracke/ --save-dir output_moler_8 && \
+dc run --rm base molecule_generation train MoLeR data/molecules/size_8_moler_tracke/ --save-dir output_v2_moler_8 && \
 dc run --rm base molecule_generation train MoLeR data/molecules/size_12_moler_tracke/ --save-dir output_moler_12 && \
 dc run --rm base molecule_generation train MoLeR data/molecules/size_15_moler_tracke/ --save-dir output_moler_15 && \
 dc run --rm base molecule_generation train MoLeR data/molecules/size_20_moler_tracke/ --save-dir output_moler_20 && \
