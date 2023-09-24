@@ -37,6 +37,7 @@ def main(log: bool = False):
             x
             for x in all_generated_files
             if not str(x).startswith(".backup")
+            and ("in-training" in str(x) or "the-end" in str(x))
             and (
                 f"{max_num_atoms}_generated_smiles.txt" in str(x)
                 or f"_{max_num_atoms}/generated_samples.txt" in str(x)
@@ -203,7 +204,9 @@ def plot_history(
                 sorted_val_precisions,
             ) = method_to_data[method]
             assert method == method_2, (method, method_2)
-            label = method
+            label = method + (
+                " (in-training)" if "in-training" in str(file) else " (the-end)"
+            )
             axes[0].set_xlabel(
                 "Number of generated unique molecules sorted by frequency"
             )
