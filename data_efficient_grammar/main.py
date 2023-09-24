@@ -18,9 +18,14 @@ import fcntl
 from pathlib import Path
 from retro_star_listener import lock
 
+GENERATED_SO_FAR = 0
+SAVE_FILE_IN_TRAINING = "generated_samples.in-training.txt"
+SAVE_FILE_THE_END = "generated_samples.the-end.txt"
 
-def evaluate(grammar, args, metrics=["diversity", "syn"]):
+
+def evaluate(grammar, args, metrics=["diversity", "syn"], to_generate: int = -1):
     # Metric evalution for the given gramamr
+    global GENERATED_SO_FAR
     div = InternalDiversity()
     eval_metrics = {}
     generated_samples = []
@@ -29,23 +34,31 @@ def evaluate(grammar, args, metrics=["diversity", "syn"]):
     idx = 0
     no_newly_generated_iter = 0
     print("Start grammar evaluation...")
-    while True:
-        print("Generating sample {}/{}".format(idx, args.num_generated_samples))
-        mol, iter_num = random_produce(grammar)
-        if mol is None:
-            no_newly_generated_iter += 1
-            continue
-        can_sml_mol = Chem.CanonSmiles(Chem.MolToSmiles(mol))
-        if can_sml_mol not in generated_samples_canonical_sml:
-            generated_samples.append(mol)
-            generated_samples_canonical_sml.append(can_sml_mol)
-            iter_num_list.append(iter_num)
-            idx += 1
-            no_newly_generated_iter = 0
-        else:
-            no_newly_generated_iter += 1
-        if idx >= args.num_generated_samples or no_newly_generated_iter > 10:
-            break
+    save_file = SAVE_FILE_IN_TRAINING if to_generate == -1 else SAVE_FILE_THE_END
+    with open(f"{args.output_dir}/{save_file}", "a") as molecule_file:
+        while True:
+            print("Generating sample {}/{}".format(idx, args.num_generated_samples))
+            mol, iter_num = random_produce(grammar)
+            GENERATED_SO_FAR += 1
+            if mol is None:
+                no_newly_generated_iter += 1
+                continue
+            can_sml_mol = Chem.CanonSmiles(Chem.MolToSmiles(mol))
+            molecule_file.write(f"{can_sml_mol}\n")
+            if can_sml_mol not in generated_samples_canonical_sml:
+                generated_samples.append(mol)
+                generated_samples_canonical_sml.append(can_sml_mol)
+                iter_num_list.append(iter_num)
+                idx += 1
+                no_newly_generated_iter = 0
+            else:
+                no_newly_generated_iter += 1
+            if (
+                idx
+                >= (args.num_generated_samples if to_generate == -1 else to_generate)
+                or no_newly_generated_iter > 10
+            ):
+                break
 
     for _metric in metrics:
         assert _metric in ["diversity", "num_rules", "num_samples", "syn"]
@@ -207,6 +220,8 @@ def learn(smiles_list, args):
             "Mean evaluation metrics: {}".format(", ".join(mean_evaluation_metrics))
         )
 
+    evaluate(l_grammar, args, metrics=[], to_generate=GENERATED_SO_FAR)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCMC training")
@@ -255,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sender_file",
         type=str,
-        default="generated_samples.txt",
+        default="sender_file.txt",
         help="file name of the generated samples",
     )
     parser.add_argument(
