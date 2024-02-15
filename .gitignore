@@ -1,5 +1,7 @@
 # Project related
 data/
+data-fo2/
+report/
 .backup/
 outputs/
 outputs_backup/
@@ -7,10 +9,10 @@ checkpoints
 output_*
 .netrc
 logs
-report
 wandb/
 chains
 graphs
+share_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
