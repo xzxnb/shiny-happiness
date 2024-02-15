@@ -11,6 +11,12 @@ docker-compose run --rm base python data_creation/create_molecules.py --atom-siz
 docker-compose run --rm base python data_creation/create_molecules.py --atom-size 30
 ```
 
+- Plot
+
+```bash
+tmux new-session -d -s splot 'docker-compose run --rm base python molecule_history.py --fo2-file friends_smokes'
+```
+
 ## DiGress
 
 <https://arxiv.org/abs/2209.14734>
@@ -34,6 +40,13 @@ tmux new-session -d -s scc25 'docker-compose run --rm base /bin/bash -c "cd /app
 tmux new-session -d -s sdd30 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=discrete general.gpus=1 max_num_atoms=30"'
 tmux new-session -d -s scc30 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 max_num_atoms=30"'
 ```
+
+tmux new-session -d -s fs6 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p5"'
+tmux new-session -d -s fs6 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p6"'
+tmux new-session -d -s fs7 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p7"'
+tmux new-session -d -s fs8 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p8"'
+tmux new-session -d -s fs9 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p9"'
+tmux new-session -d -s fs10 'docker-compose run --rm base /bin/bash -c "cd /app/DiGress && python dgd/main.py model=continuous general.gpus=2 dataset.name=fo2 filename=friends_smokes_p10"'
 
 For generations at the end, modify `DiGress/configs/general/general_default.yaml` and run again.
 
