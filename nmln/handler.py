@@ -108,7 +108,7 @@ class MoleculesHandler:
             try:
                 mol = self.fromFol2Mol(d)
             except Exception as e:
-                print(e)
+                print(f"Error in fromLin2Mol: {e}")
                 mol = None
             if mol is not None:
                 MOLS.append(mol)
@@ -138,7 +138,13 @@ class MoleculesHandler:
                     if d[b][i, j] == 1:
                         ifirst = node_to_idx[i]
                         isecond = node_to_idx[j]
-                        bond_type = rdchem.BondType.names[self.fol_to_RDKIT[b]]
+                        try:
+                            bond_type = rdchem.BondType.names[self.fol_to_RDKIT[b]]
+                        except KeyError:
+                            print(
+                                f"Unknown bond type {self.fol_to_RDKIT[b]}, from known types: {list(rdchem.BondType.names.keys())}"
+                            )
+                            exit()
                         mol.AddBond(ifirst, isecond, bond_type)
                         break
 

@@ -243,11 +243,13 @@ class Ontology:
     def linear_to_networkx_graph(self, linear_state):
         fol_dict = self.linear_to_fol_dictionary(linear_state)
         print(fol_dict)
-        assert 'c1' in fol_dict and 'single1' in fol_dict, 'TODO: Complete this function.'
+        assert (
+            "c1" in fol_dict and "single1" in fol_dict
+        ), "TODO: Complete this function."
         try:
-            graph = nx.from_numpy_matrix(fol_dict['single1'].numpy())
+            graph = nx.from_numpy_matrix(fol_dict["single1"].numpy())
         except AttributeError:
-            graph = nx.from_numpy_matrix(fol_dict['single1'])
+            graph = nx.from_numpy_matrix(fol_dict["single1"])
         return graph
 
     def atom_string_to_id(self, atom):
@@ -261,13 +263,21 @@ class Ontology:
     def atom_to_id(self, predicate_name, constant_ids):
         return self._dict_indices[predicate_name][tuple(constant_ids)]
 
-    def nested(self, array: list, k: int, max_k: int, num_constants: int, idx: list = []) -> list:
+    def nested(
+        self, array: list, k: int, max_k: int, num_constants: int, idx: list = []
+    ) -> list:
         for i in range(num_constants):
             array.append([])
             current_idx = idx + [i]
 
             if k < max_k:
-                self.nested(array[-1], k=k + 1, max_k=max_k, num_constants=num_constants, idx=current_idx)
+                self.nested(
+                    array[-1],
+                    k=k + 1,
+                    max_k=max_k,
+                    num_constants=num_constants,
+                    idx=current_idx,
+                )
 
             else:
                 for p in self.predicates.values():

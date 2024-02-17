@@ -13,17 +13,30 @@ bonds = {BT.SINGLE: 0, BT.DOUBLE: 1, BT.TRIPLE: 2, BT.AROMATIC: 3}
 
 
 class MoleculeDataModule(MolecularDataModule):
-    def __init__(self, max_num_atoms, *args, **kwargs):
+    def __init__(self, max_num_atoms, ontology_file, base_mol_dir, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_num_atoms = max_num_atoms
+        self.ontology_file = ontology_file
+        self.base_mol_dir = base_mol_dir
         self.train_smiles = None
         self.types = None
 
     def prepare_data(self) -> None:
-        train_dataset = MoleculeDataset(self.max_num_atoms, "train")
+        train_dataset = MoleculeDataset(
+            self.max_num_atoms,
+            "train",
+            base_mol_dir=self.base_mol_dir,
+            ontology_file=self.ontology_file,
+        )
         self.train_smiles = train_dataset.train_smiles
         self.types = train_dataset.types
-        val_dataset = MoleculeDataset(self.max_num_atoms, "val", train_dataset.types)
+        val_dataset = MoleculeDataset(
+            self.max_num_atoms,
+            "val",
+            types=train_dataset.types,
+            base_mol_dir=self.base_mol_dir,
+            ontology_file=self.ontology_file,
+        )
         self.val_smiles = val_dataset.val_smiles
         self.val_smiles_set = val_dataset.val_smiles_set
         super().prepare_data(
@@ -36,12 +49,21 @@ class MoleculeDataModule(MolecularDataModule):
 
 
 class MoleculeDataset(Dataset):
-    def __init__(self, size: int, split: str, types={}) -> None:
+    def __init__(
+        self,
+        size: int,
+        split: str,
+        ontology_file,
+        base_mol_dir,
+        types={},
+    ) -> None:
         super().__init__()
         self.size = size
         self.types = types
         train_smiles, val_smiles, _, _ = get_clear_val_canon_smiles(
-            size, "/app/data_creation/ontology"
+            size,
+            ontology_file,
+            base_mol_dir=base_mol_dir,
         )
         self.train_smiles, self.val_smiles = list(train_smiles), list(val_smiles)
         self.val_smiles_set = set(self.val_smiles)
