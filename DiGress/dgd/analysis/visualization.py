@@ -239,6 +239,9 @@ class NonMolecularVisualization:
 
         # visualize the final molecules
         for i in range(num_graphs_to_visualize):
+            if len(graphs) <= i:
+                break
+
             file_path = os.path.join(path, "graph_{}.png".format(i))
             graph = self.to_networkx(graphs[i][0].numpy(), graphs[i][1].numpy())
             self.visualize_non_molecule(graph=graph, pos=None, path=file_path)

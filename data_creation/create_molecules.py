@@ -20,7 +20,9 @@ def main(
 ):
     pl.seed_everything(0)
 
-    out_folder = out_folder or Path(f"/app/data/molecules/size_{atom_size}")
+    out_folder = out_folder or Path(
+        f"/home/jungpete/projects/shiny-happiness/data/molecules/size_{atom_size}"
+    )
     tmp_folder = Path(f"{str(out_folder)}_tmp")
     train_folder = out_folder / "train"
     val_folder = out_folder / "val"
@@ -68,9 +70,11 @@ def main(
             out, smiles_out = (
                 (val_folder, fval)
                 if 0 <= ratio < val_ratio
-                else (test_folder, ftest)
-                if val_ratio <= ratio < val_ratio + test_ratio
-                else (train_folder, ftrain)
+                else (
+                    (test_folder, ftest)
+                    if val_ratio <= ratio < val_ratio + test_ratio
+                    else (train_folder, ftrain)
+                )
             )
             smiles_out.write(f"{smile}\n")
             # Launch in process because some occasional Prolog's fatal error can not be catched by except Exception block.

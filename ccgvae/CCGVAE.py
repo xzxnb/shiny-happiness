@@ -219,18 +219,20 @@ class CCGVAE(ChemModel):
                         with tf.variable_scope(
                             "gru_scope" + scope + str(iter_idx), reuse=False
                         ):
-                            self.weights[
-                                "edge_weights" + scope + str(iter_idx)
-                            ] = tf.Variable(
-                                glorot_init([self.num_edge_types, new_h_dim, new_h_dim])
+                            self.weights["edge_weights" + scope + str(iter_idx)] = (
+                                tf.Variable(
+                                    glorot_init(
+                                        [self.num_edge_types, new_h_dim, new_h_dim]
+                                    )
+                                )
                             )
                             if self.params["use_edge_bias"]:
-                                self.weights[
-                                    "edge_biases" + scope + str(iter_idx)
-                                ] = tf.Variable(
-                                    np.zeros(
-                                        [self.num_edge_types, 1, new_h_dim]
-                                    ).astype(np.float32)
+                                self.weights["edge_biases" + scope + str(iter_idx)] = (
+                                    tf.Variable(
+                                        np.zeros(
+                                            [self.num_edge_types, 1, new_h_dim]
+                                        ).astype(np.float32)
+                                    )
                                 )
 
                             cell = tf.contrib.rnn.GRUCell(new_h_dim)
@@ -1098,17 +1100,17 @@ class CCGVAE(ChemModel):
                         self.placeholders["out_layer_dropout_keep_prob"],
                     )
                 normalized_z_sampled = tf.nn.l2_normalize(self.ops["z_sampled"], 2)
-                self.ops[
-                    "qed_computed_values"
-                ] = computed_values = self.gated_regression(
-                    normalized_z_sampled,
-                    self.weights["regression_gate_task%i" % task_id],
-                    self.weights["regression_transform_task%i" % task_id],
-                    h_dim_en,
-                    self.weights["qed_weights"],
-                    self.weights["qed_biases"],
-                    self.placeholders["num_vertices"],
-                    self.placeholders["node_mask"],
+                self.ops["qed_computed_values"] = computed_values = (
+                    self.gated_regression(
+                        normalized_z_sampled,
+                        self.weights["regression_gate_task%i" % task_id],
+                        self.weights["regression_transform_task%i" % task_id],
+                        h_dim_en,
+                        self.weights["qed_weights"],
+                        self.weights["qed_biases"],
+                        self.placeholders["num_vertices"],
+                        self.placeholders["node_mask"],
+                    )
                 )
                 diff = (
                     computed_values - self.placeholders["target_values"][internal_id, :]
@@ -2323,7 +2325,7 @@ if __name__ == "__main__":
     start = time.time()
     size = args.get("--size")
     size = int(size)
-    dataset = "/app/data/molecules/size_%s" % size
+    dataset = "/home/jungpete/projects/shiny-happiness/data/molecules/size_%s" % size
     args.dataset = dataset
     args.setdefault("--dataset", dataset)
     args.setdefault(

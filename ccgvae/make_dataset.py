@@ -109,7 +109,8 @@ def preprocess(size, raw_data, dataset):
             file_count += 1
         print("%s: 100 %%                   " % (section))
         with open(
-            "/app/data/molecules/size_%s/ccgvae_molecules_%s.json" % (size, section),
+            "/home/jungpete/projects/shiny-happiness/data/molecules/size_%s/ccgvae_molecules_%s.json"
+            % (size, section),
             "w",
         ) as f:
             json.dump(processed_data[section], f)
@@ -122,7 +123,7 @@ def preprocess(size, raw_data, dataset):
 if __name__ == "__main__":
     size = sys.argv[1]
     print(size)
-    dataset = "/app/data/molecules/size_%s" % size
+    dataset = "/home/jungpete/projects/shiny-happiness/data/molecules/size_%s" % size
 
     print("Reading dataset: " + str(dataset))
     data = []

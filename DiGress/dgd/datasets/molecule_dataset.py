@@ -13,11 +13,14 @@ bonds = {BT.SINGLE: 0, BT.DOUBLE: 1, BT.TRIPLE: 2, BT.AROMATIC: 3}
 
 
 class MoleculeDataModule(MolecularDataModule):
-    def __init__(self, max_num_atoms, ontology_file, base_mol_dir, *args, **kwargs):
+    def __init__(
+        self, max_num_atoms, ontology_file, base_mol_dir, limit_train, *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.max_num_atoms = max_num_atoms
         self.ontology_file = ontology_file
         self.base_mol_dir = base_mol_dir
+        self.limit_train = limit_train
         self.train_smiles = None
         self.types = None
 
@@ -27,7 +30,9 @@ class MoleculeDataModule(MolecularDataModule):
             "train",
             base_mol_dir=self.base_mol_dir,
             ontology_file=self.ontology_file,
+            limit=self.limit_train,
         )
+        self.train_dataset = train_dataset
         self.train_smiles = train_dataset.train_smiles
         self.types = train_dataset.types
         val_dataset = MoleculeDataset(
@@ -37,6 +42,7 @@ class MoleculeDataModule(MolecularDataModule):
             base_mol_dir=self.base_mol_dir,
             ontology_file=self.ontology_file,
         )
+        self.val_dataset = val_dataset
         self.val_smiles = val_dataset.val_smiles
         self.val_smiles_set = val_dataset.val_smiles_set
         super().prepare_data(
@@ -56,10 +62,12 @@ class MoleculeDataset(Dataset):
         ontology_file,
         base_mol_dir,
         types={},
+        limit=0,
     ) -> None:
         super().__init__()
         self.size = size
         self.types = types
+        self.limit = limit
         train_smiles, val_smiles, _, _ = get_clear_val_canon_smiles(
             size,
             ontology_file,
@@ -69,7 +77,8 @@ class MoleculeDataset(Dataset):
         self.val_smiles_set = set(self.val_smiles)
 
         self.data = self.process_smiles(
-            self.train_smiles if split == "train" else self.val_smiles
+            self.train_smiles if split == "train" else self.val_smiles,
+            limit=self.limit,
         )
 
     def len(self) -> int:
@@ -78,7 +87,9 @@ class MoleculeDataset(Dataset):
     def get(self, idx: int) -> Data:
         return self.data[idx]
 
-    def process_smiles(self, smiles: t.List[str]) -> t.List[Data]:
+    def process_smiles(
+        self, smiles: t.List[str], limit: t.Optional[int] = None
+    ) -> t.List[Data]:
         data_list = []
 
         for i, smile in enumerate(smiles):
@@ -135,6 +146,9 @@ class MoleculeDataset(Dataset):
             #     data = self.pre_transform(data)
 
             data_list.append(data)
+
+            if limit and len(data_list) >= limit:
+                break
 
         return data_list
 

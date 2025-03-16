@@ -33,7 +33,7 @@ class Dataset(torch.utils.data.Dataset):
 
     @staticmethod
     def load_files(path: Path) -> list:
-        print(f'Loading files from {path}')
+        print(f"Loading files from {path}")
         return sorted([p for p in path.glob("*") if not str(p).endswith("ontology")])
 
     @property

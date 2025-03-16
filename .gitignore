@@ -1,4 +1,6 @@
 # Project related
+wfomi_data/
+outputs_gnn/
 data/
 data-fo2/
 report/

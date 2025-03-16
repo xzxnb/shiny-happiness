@@ -28,11 +28,15 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         train_metrics,
         sampling_metrics,
         visualization_tools,
-        extra_features,
-        domain_features,
+        force_n_edges,
+        logger_mlflow,
+        extra_features=None,
+        domain_features=None,
         smiles_filename_contain: str = "in-training",
     ):
         super().__init__()
+        self.force_n_edges = force_n_edges
+        self.logger_mlflow = logger_mlflow
 
         input_dims = dataset_infos.input_dims
         output_dims = dataset_infos.output_dims
@@ -42,6 +46,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         self.name = cfg.general.name
         self.model_dtype = torch.float32
         self.T = cfg.model.diffusion_steps
+        self.generated_smiles = set()
 
         self.Xdim = input_dims["X"]
         self.Edim = input_dims["E"]
@@ -52,16 +57,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         self.node_dist = nodes_dist
 
         self.dataset_info = dataset_infos
-        self.generated_smiles = set()
-        output_dir = "/app/DiGress/outputs/"
-        self.generated_smiles_path = Path(
-            f"{output_dir}{cfg.general.name}_generated_smiles.{smiles_filename_contain}.txt"
-        )
-        if self.generated_smiles_path.exists():
-            input(
-                "Generated smiles file already exists. Press enter to continue and overwrite it."
-            )
-            self.generated_smiles_path.unlink()
 
         self.train_loss = TrainLossDiscrete(self.cfg.model.lambda_train)
 
@@ -118,9 +113,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
 
             edge_types = self.dataset_info.edge_types.float()
             e_marginals = edge_types / torch.sum(edge_types)
-            print(
-                f"Marginal distribution of the classes: {x_marginals} for nodes, {e_marginals} for edges"
-            )
             self.transition_model = MarginalUniformTransition(
                 x_marginals=x_marginals,
                 e_marginals=e_marginals,
@@ -140,6 +132,36 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         self.number_chain_steps = cfg.general.number_chain_steps
         self.best_val_nll = 1e8
         self.val_counter = 0
+        self.temp_counter = 0
+
+        self.seed = int(cfg.seed)
+        self.n_parameters = sum(p.numel() for p in self.model.parameters())
+        print(cfg.model.hidden_dims)
+        print("n_parameters", self.n_parameters)
+        output_dir = (
+            "/home/jungpete/projects/shiny-happiness/DiGress/outputs/"
+            if self.cfg.dataset.name == "molecules"
+            else f"/home/jungpete/projects/deepgraphon/data-fo2-afterpaper/{self.cfg.filename}/digress-discrete-{self.n_parameters}-{self.seed}/"
+        )
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        self.generated_smiles_path = (
+            Path(
+                f"{output_dir}{cfg.general.name}_nparams{self.n_parameters}_generated_smiles.{smiles_filename_contain}.txt"
+            )
+            if self.cfg.dataset.name == "molecules"
+            else (
+                Path(
+                    f"{output_dir}{cfg.general.name}_generated_fo2.{smiles_filename_contain}.txt"
+                )
+                if self.cfg.dataset.name == "fo2"
+                else None
+            )
+        )
+        if self.generated_smiles_path.exists():
+            # input(
+            #     "Generated smiles file already exists. Press enter to continue and overwrite it."
+            # )
+            self.generated_smiles_path.unlink()
 
     def training_step(self, data, i):
         dense_data, node_mask = utils.to_dense(
@@ -250,7 +272,7 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
 
         self.val_counter += 1
         samples = []
-        if True or self.val_counter % self.cfg.general.sample_every_val == 0:
+        if self.val_counter % self.cfg.general.sample_every_val == 0:
             start = time.time()
             samples_left_to_generate = self.cfg.general.samples_to_generate
             samples_left_to_save = self.cfg.general.samples_to_save
@@ -264,16 +286,24 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                 to_generate = min(samples_left_to_generate, bs)
                 to_save = min(samples_left_to_save, bs)
                 chains_save = min(chains_left_to_save, bs)
-                samples.extend(
-                    self.sample_batch(
-                        batch_id=ident,
-                        batch_size=to_generate,
-                        num_nodes=None,
-                        save_final=to_save,
-                        keep_chain=chains_save,
-                        number_chain_steps=self.number_chain_steps,
+                try:
+                    samples.extend(
+                        self.sample_batch(
+                            batch_id=ident,
+                            batch_size=to_generate,
+                            num_nodes=None,
+                            save_final=to_save,
+                            keep_chain=chains_save,
+                            number_chain_steps=self.number_chain_steps,
+                        )
                     )
-                )
+                    self.temp_counter = 0
+                except Exception as e:
+                    self.temp_counter += 1
+                    if self.temp_counter > 5:
+                        print("Too many exceptions")
+                        exit()
+                    return 0
                 ident += to_generate
 
                 samples_left_to_save -= to_save
@@ -282,19 +312,38 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
 
             with open(self.generated_smiles_path, "a") as f:
                 for sample in samples:
-                    mol = build_molecule(
-                        sample[0], sample[1], self.dataset_info.atom_decoder
-                    )
-                    smile = mol2smiles(mol)
-                    if smile is not None:
-                        self.generated_smiles.add(smile)
-                        f.write(f"{self.current_epoch} {self.global_step} {smile}\n")
+                    if self.cfg.dataset.name == "fo2":
+                        sent = self.dataset_info.datamodule.to_sentence(
+                            sample[0], sample[1]
+                        )
+                        if sent:
+                            self.generated_smiles.add(sent)
+                            # f.write(f"{sent}\n")
+                            f.write(f"{self.current_epoch} {self.global_step} {sent}\n")
+                    elif self.cfg.dataset.name == "molecules":
+                        mol = build_molecule(
+                            sample[0], sample[1], self.dataset_info.atom_decoder
+                        )
+                        smile = mol2smiles(mol)
+                        if smile is not None:
+                            self.generated_smiles.add(smile)
+                            f.write(
+                                f"{self.current_epoch} {self.global_step} {smile}\n"
+                            )
+                    else:
+                        raise RuntimeError(f"Unknown dataset name")
 
             perc_generated = len(
                 self.dataset_info.val_smiles_set & self.generated_smiles
             ) / len(self.dataset_info.val_smiles_set)
+            self.logger_mlflow.log_metrics(
+                {"val/ratio_generated_in_val": perc_generated}, step=self.global_step
+            )
+            self.logger_mlflow.log_metrics(
+                {"val/n_generated_samples": len(self.generated_smiles)},
+                step=self.global_step,
+            )
             print(f"So far generated {perc_generated} of validation")
-            # wandb.log({"test/perc_generated": perc_generated}, commit=False)
 
             # print("Computing sampling metrics...")
             # self.sampling_metrics(samples, self.name, self.current_epoch, val_counter=-1, test=False)
@@ -336,19 +385,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
             self.test_E_logp.compute(),
             self.test_y_logp.compute(),
         ]
-        wandb.log(
-            {
-                "test/epoch_NLL": metrics[0],
-                "test/X_mse": metrics[1],
-                "test/E_mse": metrics[2],
-                "test/y_mse": metrics[3],
-                "test/X_logp": metrics[4],
-                "test/E_logp": metrics[5],
-                "test/y_logp": metrics[6],
-            },
-            commit=False,
-        )
-
         print(
             f"Epoch {self.current_epoch}: Test NLL {metrics[0] :.2f} -- Test Atom type KL {metrics[1] :.2f} -- ",
             f"Test Edge type KL: {metrics[2] :.2f} -- Test Global feat. KL {metrics[3] :.2f}\n",
@@ -366,12 +402,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
         samples = []
         id = 0
         while samples_left_to_generate > 0:
-            print(
-                f"Samples left to generate: {samples_left_to_generate}/"
-                f"{self.cfg.general.final_model_samples_to_generate}",
-                end="",
-                flush=True,
-            )
             bs = 2 * self.cfg.train.batch_size
             to_generate = min(samples_left_to_generate, bs)
             to_save = min(samples_left_to_save, bs)
@@ -390,13 +420,12 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
             samples_left_to_save -= to_save
             samples_left_to_generate -= to_generate
             chains_left_to_save -= chains_save
-        print("Computing sampling metrics...")
+
         self.sampling_metrics.reset()
         self.sampling_metrics(
             samples, self.name, self.current_epoch, self.val_counter, test=True
         )
         self.sampling_metrics.reset()
-        print("Done.")
 
     def kl_prior(self, X, E, y, node_mask):
         """Computes the KL between q(z1 | x) and the prior p(z1) = Normal(0, 1).
@@ -765,9 +794,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
             atom_types = X[i, :n].cpu()
             edge_types = E[i, :n, :n].cpu()
             molecule_list.append([atom_types, edge_types])
-            if i < 3:
-                print("Example of generated E: ", atom_types)
-                print("Example of generated X: ", edge_types)
 
         predicted_graph_list = []
         for i in range(batch_size):
@@ -796,7 +822,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                 print(
                     "\r{}/{} complete".format(i + 1, num_molecules), end="", flush=True
                 )
-            print("\nVisualizing molecules...")
 
             # Visualize the final molecules
             current_path = os.getcwd()
@@ -805,9 +830,6 @@ class DiscreteDenoisingDiffusion(pl.LightningModule):
                 f"graphs/{self.name}/epoch{self.current_epoch}_b{batch_id}/",
             )
             self.visualization_tools.visualize(result_path, molecule_list, save_final)
-            self.visualization_tools.visualize(
-                result_path, predicted_graph_list, save_final, log="predicted"
-            )
             print("Done.")
 
         return molecule_list

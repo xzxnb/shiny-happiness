@@ -25,11 +25,15 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         train_metrics,
         sampling_metrics,
         visualization_tools,
+        force_n_edges,
+        logger_mlflow,
         extra_features=None,
         domain_features=None,
         smiles_filename_contain: str = "in-training",
     ):
         super().__init__()
+        self.force_n_edges = force_n_edges
+        self.logger_mlflow = logger_mlflow
 
         input_dims = dataset_infos.input_dims
         output_dims = dataset_infos.output_dims
@@ -49,15 +53,6 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         self.model_dtype = torch.float32
         self.T = cfg.model.diffusion_steps
         self.generated_smiles = set()
-        output_dir = "/app/DiGress/outputs/"
-        self.generated_smiles_path = Path(
-            f"{output_dir}{cfg.general.name}_generated_smiles.{smiles_filename_contain}.txt"
-        )
-        if self.generated_smiles_path.exists():
-            input(
-                "Generated smiles file already exists. Press enter to continue and overwrite it."
-            )
-            self.generated_smiles_path.unlink()
 
         self.Xdim = input_dims["X"]
         self.Edim = input_dims["E"]
@@ -112,6 +107,35 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         self.number_chain_steps = cfg.general.number_chain_steps
         self.best_val_nll = 1e8
         self.val_counter = 0
+
+        self.seed = int(cfg.seed)
+        self.n_parameters = sum(p.numel() for p in self.model.parameters())
+        print(cfg.model.hidden_dims)
+        print("n_parameters", self.n_parameters)
+        output_dir = (
+            "/home/jungpete/projects/shiny-happiness/DiGress/outputs/"
+            if self.cfg.dataset.name == "molecules"
+            else f"/home/jungpete/projects/deepgraphon/data-fo2-afterpaper/{self.cfg.filename}/digress-continous-{self.n_parameters}-{self.seed}/"
+        )
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        self.generated_smiles_path = (
+            Path(
+                f"{output_dir}{cfg.general.name}_nparams{self.n_parameters}_generated_smiles.{smiles_filename_contain}.txt"
+            )
+            if self.cfg.dataset.name == "molecules"
+            else (
+                Path(
+                    f"{output_dir}{cfg.general.name}_generated_fo2.{smiles_filename_contain}.txt"
+                )
+                if self.cfg.dataset.name == "fo2"
+                else None
+            )
+        )
+        if self.generated_smiles_path.exists():
+            # input(
+            #     "Generated smiles file already exists. Press enter to continue and overwrite it."
+            # )
+            self.generated_smiles_path.unlink()
 
     def training_step(self, data, i):
         dense_data, node_mask = utils.to_dense(
@@ -238,7 +262,7 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         print("Val loss: %.4f \t Best val loss:  %.4f\n" % (val_nll, self.best_val_nll))
 
         self.val_counter += 1
-        if True or self.val_counter % self.cfg.general.sample_every_val == 0:
+        if self.val_counter % self.cfg.general.sample_every_val == 0:
             start = time.time()
             samples_left_to_generate = self.cfg.general.samples_to_generate
             samples_left_to_save = self.cfg.general.samples_to_save
@@ -270,19 +294,39 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
 
             with open(self.generated_smiles_path, "a") as f:
                 for sample in samples:
-                    mol = build_molecule(
-                        sample[0], sample[1], self.dataset_info.atom_decoder
-                    )
-                    smile = mol2smiles(mol)
-                    if smile is not None:
-                        self.generated_smiles.add(smile)
-                        f.write(f"{self.current_epoch} {self.global_step} {smile}\n")
+                    if self.cfg.dataset.name == "fo2":
+                        sent = self.dataset_info.datamodule.to_sentence(
+                            sample[0], sample[1]
+                        )
+                        if sent:
+                            self.generated_smiles.add(sent)
+                            # f.write(f"{sent}\n")
+                            f.write(f"{self.current_epoch} {self.global_step} {sent}\n")
+                    elif self.cfg.dataset.name == "molecules":
+                        mol = build_molecule(
+                            sample[0], sample[1], self.dataset_info.atom_decoder
+                        )
+                        smile = mol2smiles(mol)
+                        if smile is not None:
+                            self.generated_smiles.add(smile)
+                            f.write(
+                                f"{self.current_epoch} {self.global_step} {smile}\n"
+                            )
+                    else:
+                        raise RuntimeError(f"Unknown dataset name")
 
             perc_generated = len(
                 self.dataset_info.val_smiles_set & self.generated_smiles
             ) / len(self.dataset_info.val_smiles_set)
+            self.logger_mlflow.log_metrics(
+                {"val/ratio_generated_in_val": perc_generated}, step=self.global_step
+            )
+            self.logger_mlflow.log_metrics(
+                {"val/n_generated_samples": len(self.generated_smiles)},
+                step=self.global_step,
+            )
             print(f"So far generated {perc_generated} of validation")
-            wandb.log({"test/perc_generated": perc_generated}, commit=False)
+            # wandb.log({"test/perc_generated": perc_generated}, commit=False)
 
             # self.sampling_metrics(samples, self.name, self.current_epoch, val_counter=-1, test=False)
             # print(f'Sampling took {time.time() - start:.2f} seconds\n')
@@ -740,7 +784,6 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
             assert isinstance(num_nodes, torch.Tensor)
             n_nodes = num_nodes
         n_nodes_max = torch.max(n_nodes).item()
-
         # Build the masks
         arange = (
             torch.arange(n_nodes_max, device=self.device)
@@ -749,7 +792,6 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
         )
         node_mask = arange < n_nodes.unsqueeze(1)
         node_mask = node_mask.float()
-
         # Sample noise  -- z has size (n_samples, n_nodes, n_features)
         # TODO: how to move on the right device in the multi-gpu case?
         z_T = diffusion_utils.sample_feature_noise(
@@ -799,22 +841,22 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
             average_X_coord.append(X.abs().mean().item())
             average_E_coord.append(E.abs().mean().item())
 
-        print(
-            f"Average X coordinate at each step {[int(c) for i, c in enumerate(average_X_coord) if i % 10 == 0]}"
-        )
-        print(
-            f"Average E coordinate at each step {[int(c) for i, c in enumerate(average_E_coord) if i % 10 == 0]}"
-        )
+        # print(
+        #     f"Average X coordinate at each step {[int(c) for i, c in enumerate(average_X_coord) if i % 10 == 0]}"
+        # )
+        # print(
+        #     f"Average E coordinate at each step {[int(c) for i, c in enumerate(average_E_coord) if i % 10 == 0]}"
+        # )
 
         # Finally sample the discrete data given the last latent code z0
         final_graph = self.sample_discrete_graph_given_z0(X, E, y, node_mask)
         X, E, y = final_graph.X, final_graph.E, final_graph.y
         assert (E == torch.transpose(E, 1, 2)).all()
 
-        print("Examples of generated graphs:")
-        for i in range(min(5, X.shape[0])):
-            print("E", E[i])
-            print("X: ", X[i])
+        # print("Examples of generated graphs:")
+        # for i in range(min(5, X.shape[0])):
+        #     print("E", E[i])
+        #     print("X: ", X[i])
 
         # Prepare the chain for saving
         if keep_chain > 0:
@@ -912,6 +954,7 @@ class LiftedDenoisingDiffusion(pl.LightningModule):
             node_mask,
             collapse=True,
         )
+
         return sampled
 
     def sample_p_zs_given_zt(self, s, t, X_t, E_t, y_t, node_mask):

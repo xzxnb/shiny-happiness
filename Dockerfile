@@ -1,6 +1,9 @@
 # Common
 
-FROM --platform=amd64 nvidia/cuda:11.3.1-runtime-ubuntu18.04
+# Potato
+FROM --platform=amd64 nvidia/cuda:11.3.1-runtime-ubuntu18.04 
+# RCI
+# FROM --platform=amd64 nvidia/cuda:12.4.1-runtime-ubuntu20.04
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -15,7 +18,9 @@ RUN apt-get update \
     wget lmdb-utils python-dev build-essential \
     graphviz graphviz-dev cmake swi-prolog \
     texlive texlive-latex-extra  texlive-fonts-recommended \
-    texlive-fonts-recommended texlive-generic-recommended texlive-latex-base texlive-latex-extra \
+    texlive-fonts-recommended \
+    # texlive-generic-recommended \
+    texlive-latex-base texlive-latex-extra \
     texlive-latex-recommended texlive-publishers  texlive-science  texlive-xetex \
     dvipng cm-super dvipng ghostscript cm-super
 
@@ -37,7 +42,7 @@ ARG PYTHON_VERSION
 RUN git clone https://github.com/pyenv/pyenv.git $HOME/.pyenv \
     && pyenv install $PYTHON_VERSION \
     && pyenv global $PYTHON_VERSION \
-    && pip install --upgrade pip \
+    && pip install --upgrade "pip<24.1" \
     && pip install pipenv \
     && curl -sSL https://install.python-poetry.org | python -
 ENV PATH="${PATH}:${HOME}/.local/bin"
@@ -59,17 +64,20 @@ RUN poetry install
 # A100 compatible torch installation
 
 RUN pip install torch==1.12.0+cu113 torchvision==0.13.0+cu113 torchaudio==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu113
+# RUN pip install torch==2.3.0+cu121 torchvision==0.18.0+cu121 torchaudio==2.3.0+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
 RUN pip install pytorch-lightning==1.7.7
 RUN pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.12.0+cu113.html
+# RUN pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
 
 # Some of DiGress stuff
 
 USER root
 
-RUN apt-key adv --keyserver keys.openpgp.org --recv-key 612DEFB798507F25 \
-    && add-apt-repository "deb [ arch=amd64 ] https://downloads.skewed.de/apt bionic main" \
-    && apt-get update \
-    && apt-get install -y python3-graph-tool
+# RUN apt-key adv --keyserver keys.openpgp.org --recv-key 612DEFB798507F25 \
+#     && add-apt-repository "deb [ arch=amd64 ] https://downloads.skewed.de/apt bionic main" \
+#     # && add-apt-repository "deb [ arch=amd64 ] https://downloads.skewed.de/apt focal main" \
+#     && apt-get update \
+#     && apt-get install -y python3-graph-tool
 
 USER app
 
@@ -131,16 +139,16 @@ RUN conda env create -f paccmann_chemistry/examples/conda.yml
 
 # rgcvae
 
-RUN pip install Cython
+# RUN pip install Cython
 
-USER root
+# USER root
 
-COPY rgcvae/rgivae_env.yml rgcvae/rgivae_env.yml
-RUN chmod -R a+w rgcvae/
+# COPY rgcvae/rgivae_env.yml rgcvae/rgivae_env.yml
+# RUN chmod -R a+w rgcvae/
 
-RUN conda env create -f rgcvae/rgivae_env.yml
+# RUN conda env create -f rgcvae/rgivae_env.yml
 
-USER app
+# USER app
 
 # ccgvae
 
@@ -162,3 +170,5 @@ ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/
 RUN pip install selfies
 
 RUN pip install torchmetrics==0.11.4
+
+RUN pip install pydantic

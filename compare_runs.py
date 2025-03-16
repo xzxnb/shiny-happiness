@@ -131,6 +131,7 @@ def main(
 def get_clear_val_canon_smiles(
     max_num_atoms: int,
     ontology_path: str,
+    base_mol_dir: str = None,
 ) -> t.Tuple[t.Set[str], t.Set[str], t.Set[str], float]:
     constants = [str(i) for i in range(max_num_atoms)]
     domain = ontology.Domain(name="atoms", constants=constants)
@@ -141,19 +142,23 @@ def get_clear_val_canon_smiles(
     ontology_ = ontology.Ontology(domains=[domain], predicates=predicates)
     handler_initialized = handler.MoleculesHandler(max_num_atoms, ontology_)
 
+    base_mol_dir = (
+        base_mol_dir
+        or f"/home/jungpete/projects/nmln-torch/data/molecules/training{max_num_atoms}"
+    )
     train_ds = dataset.Dataset(
         constants=constants,
         domain=domain,
         predicates=predicates,
         ontology=ontology_,
-        mol_dir=f"/app/data/molecules/size_{max_num_atoms}/train",
+        mol_dir=f"{base_mol_dir}/train",
     )
     val_ds = dataset.Dataset(
         constants=constants,
         domain=domain,
         predicates=predicates,
         ontology=ontology_,
-        mol_dir=f"/app/data/molecules/size_{max_num_atoms}/val",
+        mol_dir=f"{base_mol_dir}/val",
     )
 
     train_mols = handler_initialized.fromLin2Mol(train_ds.y)

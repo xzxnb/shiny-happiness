@@ -12,10 +12,19 @@ services:
     runtime: nvidia
     environment:
       - LOGNAME
-      - MLFLOW_TRACKING_URI=http://host.docker.internal:2222
+      - MLFLOW_TRACKING_URI
+      - MLFLOW_TRACKING_USERNAME
+      - DAGSHUB_REPO_OWNER
+      - DAGSHUB_REPO_NAME
+      - DAGSHUB_USER_TOKEN
     volumes:
       - ./:/app
+      - ./:/home/jungpete/projects/shiny-happiness
+      - /home/peter/projects/deepgraphon:/deepgraphon
+      - /home/peter/projects/deepgraphon:/home/jungpete/projects/deepgraphon
+      - /home/peter/projects/nmln-torch:/home/jungpete/projects/nmln-torch
       - /stuff:/stuff
       - .netrc/:/home/app/.netrc
     extra_hosts:
       - "host.docker.internal:host-gateway"
+ 

@@ -1,5 +1,5 @@
 # Training settings
-n_epochs: 100000
+n_epochs: 100000000
 batch_size: 512
 lr: 0.0002
 clip_grad: null # float, null to disable
@@ -12,3 +12,4 @@ optimizer: adamw # adamw,nadamw,nadam => nadamw for large batches, see http://ar
 amsgrad: true
 overfit: false
 seed: 0
+n_train_data: -1

@@ -4,8 +4,13 @@ transition: 'marginal'                          # uniform or marginal
 model: 'graph_tf'
 diffusion_steps: 500
 diffusion_noise_schedule: 'cosine'              # 'cosine', 'polynomial_2'
-n_layers: 5
 
+# n_layers: 1 # 1057796 params
+# n_layers: 3 # 2833668 params
+n_layers: 5 # 4609540 params
+
+divide_dims: 0 # ignored if 0
+force_n_edges: 0 # ignored if 0
 
 extra_features: 'all'        # 'all', 'cycles', 'eigenvalues' or null
 

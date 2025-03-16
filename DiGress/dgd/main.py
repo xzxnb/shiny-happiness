@@ -6,21 +6,30 @@ try:
 except ModuleNotFoundError:
     pass
 
+import dagshub
 import os
 import pathlib
 import warnings
+import mlflow
 
 import torch
 import wandb
 import hydra
 import omegaconf
 from omegaconf import DictConfig
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
+from gan.mlflow_utils import SafeMLFlowLogger
 
 from dgd import utils
-from dgd.datasets import guacamol_dataset, qm9_dataset, moses_dataset, molecule_dataset
+from dgd.datasets import (
+    guacamol_dataset,
+    qm9_dataset,
+    moses_dataset,
+    molecule_dataset,
+    fo2_dataset,
+)
 from dgd.datasets.spectre_dataset import (
     SBMDataModule,
     Comm20DataModule,
@@ -121,13 +130,78 @@ def setup_wandb(cfg):
 def main(cfg: DictConfig):
     dataset_config = cfg["dataset"]
 
-    max_num_atoms = int(cfg["max_num_atoms"])
-    assert max_num_atoms > 0
+    seed = int(cfg["seed"])
+    max_num_atoms = (
+        int(cfg["max_num_atoms"]) if dataset_config["name"] != "fo2" else None
+    )
+    limit_train = int(cfg["limit_train"])
+    assert dataset_config["name"] == "fo2" or max_num_atoms > 0
+    file_name = cfg["filename"]
 
-    cfg.general.name = f"v2-{cfg.model.type}-{max_num_atoms}"
+    # Initialize logger.
 
-    if dataset_config["name"] in ["sbm", "comm-20", "planar"]:
-        if dataset_config["name"] == "sbm":
+    if os.environ.get("DAGSHUB_REPO_OWNER") or os.environ.get("DAGSHUB_REPO_NAME"):
+        dagshub.init(
+            repo_owner=os.environ.get("DAGSHUB_REPO_OWNER"),
+            repo_name=os.environ.get("DAGSHUB_REPO_NAME"),
+            mlflow=True,
+        )
+
+    seed_everything(seed)
+    cfg.seed = seed
+
+    cfg.model.n_layers = int(cfg.model.n_layers)
+    cfg.model.divide_dims = int(cfg.model.divide_dims)
+    cfg.model.force_n_edges = int(cfg.model.force_n_edges)
+    cfg.model.diffusion_steps = int(cfg.model.diffusion_steps)
+
+    run_name = f"DiGress - {cfg.model.type}"
+    if limit_train:
+        run_name = f"{limit_train=}-{run_name}"
+    if seed:
+        run_name = f"{seed=}-{run_name}"
+    if cfg.model.n_layers:
+        run_name = f"{cfg.model.n_layers=}-{run_name}"
+    if cfg.model.diffusion_steps:
+        run_name = f"{cfg.model.diffusion_steps=}-{run_name}"
+    if cfg.general.check_val_every_n_epochs:
+        run_name = f"{run_name}-{cfg.general.check_val_every_n_epochs=}"
+    if cfg.general.sample_every_val:
+        run_name = f"{run_name}-{cfg.general.sample_every_val=}"
+
+    logger_mlflow = SafeMLFlowLogger(run_name=run_name)
+    logger_mlflow.log_hyperparams({"max_num_atoms": max_num_atoms, **cfg})
+    logger_mlflow.log_metrics({"seed": seed})
+
+    if cfg.model.divide_dims > 0:
+        assert cfg.model.divide_dims % 2 == 0
+        for name, value in cfg.model.hidden_dims.items():
+            cfg.model.hidden_dims[name] = value // cfg.model.divide_dims
+
+    ontology_file = cfg["ontology_file"]
+    base_mol_dir = cfg["base_mol_dir"].strip() or None
+    base_mol_dir_name = (
+        base_mol_dir.strip().rstrip("/").split("/")[-1].strip()
+        if base_mol_dir
+        else None
+    )
+    assert base_mol_dir_name is None or f"atomsize{max_num_atoms}" in base_mol_dir_name
+
+    # cfg.general.name = f"debug-seed{seed}-v2-afterpaper-{cfg.model.type}-{max_num_atoms or cfg['filename']}-{base_mol_dir_name or ''}"
+    cfg.general.name = f"fixedmultiedge-bigepochsample-seed{seed}-v2-afterpaper-{cfg.model.type}-{max_num_atoms or cfg['filename']}-{base_mol_dir_name or ''}"
+
+    if cfg.model.force_n_edges:
+        cfg.general.name = f"force_n_edges{cfg.model.force_n_edges}-" + cfg.general.name
+
+    if dataset_config["name"] in ["sbm", "comm-20", "planar", "fo2"]:
+        dataset_infos = None
+
+        if dataset_config["name"] == "fo2":
+            datamodule = fo2_dataset.FO2DataModule(file_name, cfg)
+            datamodule.prepare_data()
+            sampling_metrics = SBMSamplingMetrics(datamodule.dataloaders)
+            dataset_infos = fo2_dataset.FO2DatasetInfos(datamodule, dataset_config)
+        elif dataset_config["name"] == "sbm":
             datamodule = SBMDataModule(cfg)
             sampling_metrics = SBMSamplingMetrics(datamodule.dataloaders)
         elif dataset_config["name"] == "comm-20":
@@ -137,13 +211,17 @@ def main(cfg: DictConfig):
             datamodule = PlanarDataModule(cfg)
             sampling_metrics = PlanarSamplingMetrics(datamodule.dataloaders)
 
-        dataset_infos = SpectreDatasetInfos(datamodule, dataset_config)
+        dataset_infos = (
+            SpectreDatasetInfos(datamodule, dataset_config)
+            if dataset_infos is None
+            else dataset_infos
+        )
         train_metrics = (
             TrainAbstractMetricsDiscrete()
             if cfg.model.type == "discrete"
             else TrainAbstractMetrics()
         )
-        visualization_tools = NonMolecularVisualization()
+        visualization_tools = None  # NonMolecularVisualization()
 
         if cfg.model.type == "discrete" and cfg.model.extra_features is not None:
             extra_features = ExtraFeatures(
@@ -168,8 +246,14 @@ def main(cfg: DictConfig):
             "domain_features": domain_features,
         }
     elif dataset_config["name"] in ["qm9", "guacamol", "moses", "molecules"]:
-        if dataset_config["name"] == "qm9":
-            datamodule = molecule_dataset.MoleculeDataModule(max_num_atoms, cfg)
+        if dataset_config["name"] in ("qm9", "molecules"):
+            datamodule = molecule_dataset.MoleculeDataModule(
+                max_num_atoms,
+                ontology_file=ontology_file,
+                base_mol_dir=base_mol_dir,
+                cfg=cfg,
+                limit_train=limit_train,
+            )
             datamodule.prepare_data()
             train_smiles = datamodule.train_smiles
             dataset_infos = molecule_dataset.MoleculesInfos(
@@ -208,6 +292,13 @@ def main(cfg: DictConfig):
             extra_features = DummyExtraFeatures()
             domain_features = DummyExtraFeatures()
 
+        logger_mlflow.log_metrics(
+            {
+                "len/train_ds": len(datamodule.train_dataset),
+                "len/val_ds": len(datamodule.val_dataset),
+            }
+        )
+
         dataset_infos.compute_input_output_dims(
             datamodule=datamodule,
             extra_features=extra_features,
@@ -221,9 +312,7 @@ def main(cfg: DictConfig):
 
         # We do not evaluate novelty during training
         sampling_metrics = SamplingMolecularMetrics(dataset_infos, train_smiles)
-        visualization_tools = MolecularVisualization(
-            cfg.dataset.remove_h, dataset_infos=dataset_infos
-        )
+        visualization_tools = None  # MolecularVisualization(cfg.dataset.remove_h, dataset_infos=dataset_infos)
 
         model_kwargs = {
             "dataset_infos": dataset_infos,
@@ -249,13 +338,23 @@ def main(cfg: DictConfig):
     cfg = setup_wandb(cfg)
 
     if cfg.model.type == "discrete":
-        model = DiscreteDenoisingDiffusion(cfg=cfg, **model_kwargs)
+        model = DiscreteDenoisingDiffusion(
+            cfg=cfg,
+            force_n_edges=cfg.model.force_n_edges,
+            logger_mlflow=logger_mlflow,
+            **model_kwargs,
+        )
     else:
-        model = LiftedDenoisingDiffusion(cfg=cfg, **model_kwargs)
+        model = LiftedDenoisingDiffusion(
+            cfg=cfg,
+            force_n_edges=cfg.model.force_n_edges,
+            logger_mlflow=logger_mlflow,
+            **model_kwargs,
+        )
 
     callbacks = []
     checkpoint_callback = ModelCheckpoint(
-        dirpath=f"/app/DiGress/checkpoints/{cfg.general.name}",
+        dirpath=f"/home/jungpete/projects/shiny-happiness/DiGress/checkpoints/{cfg.general.name}",
         filename="{epoch}",
         monitor="val/epoch_NLL",
         save_top_k=5,
