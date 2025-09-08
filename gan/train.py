@@ -6,12 +6,13 @@ import dagshub
 import torch_geometric as tg
 import pytorch_lightning as pl
 from pydantic import BaseModel
-from dgd.datasets import fo2_dataset
+#from dgd.datasets import fo2_dataset
+from DiGress.dgd.datasets import fo2_dataset
 from gan.mlflow_utils import SafeMLFlowLogger
 import re
 from typing import Optional
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-
+from graph_transformer import GF
 app = typer.Typer(pretty_exceptions_enable=False)
 
 
@@ -35,7 +36,7 @@ def main(  # classify_two_mlns
     seed: int = 0,
     gpu: int = 0,
     dry: bool = False,
-    user: str = "peter",
+    user: str = "color1_10k_GF",
 ):
     data_family = folder.split("json/")[1].split("/")[0].split("_")[0][:-1]
     domain_size = int(folder.split("domain")[1].split("/")[0])
@@ -135,7 +136,7 @@ def train(
 ) -> None:
     assert data_name or train_path
     cfg = CFG(
-        train=TrainConfig(batch_size=128, num_workers=1, n_train_data=-1),
+        train=TrainConfig(batch_size=128, num_workers=16, n_train_data=-1),
         general=GeneralConfig(name=config_name),
     )
     pl.seed_everything(seed)
@@ -156,19 +157,25 @@ def train(
         "friends-person": 3 if data_name else 2,
         "random-person": 2 if data_name else 1,
         "weightedcolors-v": 5 if data_name else 4,
-        "color": 5 if data_name else 4,
+        "color": 3 if data_name else 3,
     }
     data_family_name_to_n_edge_classes = {
         "deskmate-students": 3,
     }
 
-    gnn = GNN(
+    # gnn = GNN(
+    #     n_node_classes=data_family_name_to_n_node_classes[data_family],
+    #     n_edge_classes=data_family_name_to_n_edge_classes.get(data_family, 1),
+    #     domain_size=domain_size,
+    #     out_channels=256,
+    #     gnn_layer="DenseSAGEConv",
+    #     depth=4,
+    #     val_metrics_file=generated_path + f".val_metrics.{seed=}.multiedgefixed.json",
+    # )
+    gnn = GF(
         n_node_classes=data_family_name_to_n_node_classes[data_family],
         n_edge_classes=data_family_name_to_n_edge_classes.get(data_family, 1),
         domain_size=domain_size,
-        out_channels=256,
-        gnn_layer="DenseSAGEConv",
-        depth=4,
         val_metrics_file=generated_path + f".val_metrics.{seed=}.multiedgefixed.json",
     )
 
@@ -191,7 +198,7 @@ def train(
 {auto_train_ratio=}
 """,
             },
-            tracking_uri=os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:2222"),
+            tracking_uri=os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000"),
         )
         if not dry
         else None
@@ -311,6 +318,7 @@ class GNN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         out = self(batch.node_feats, batch.edge_type_to_adj_matrix)
         loss = torch.nn.functional.binary_cross_entropy(out, batch.gan_y)
+        self.log("train_loss", loss, on_epoch=True)
         # self.log("train_loss", loss, batch_size=len(batch.gan_y))
         # self.log(
         #     "train_accuracy", accuracy(out, batch.gan_y), batch_size=len(batch.gan_y)
@@ -392,4 +400,38 @@ def recall(pred: torch.Tensor, target: torch.Tensor) -> float:
 
 
 if __name__ == "__main__":
+    # from torchviz import make_dot
+    # import matplotlib.pyplot as plt
+    # from torchinfo import summary
+    # # 初始化模型和输入（同上）
+    # model = GF(
+    #     n_node_classes=3,
+    #     n_edge_classes=1,
+    #     domain_size=10,
+    #     val_metrics_file=f".val_metrics.multiedgefixed.json"
+    #            )
+    # input_feat = torch.zeros((128, 10, 4), dtype=torch.float32)
+    # for i in range(128):
+    #     for j in range(10):
+    #         seed = torch.tensor([i, j]).sum().item()  # 基于循环索引生成种子
+    #         torch.manual_seed(seed)
+    #         feat_idx = torch.randint(low=1, high=4, size=(1,)).item()
+    #         input_feat[i,j,feat_idx] = 1
+    # adj_matrix_b = torch.randint(
+    #     low=0,  # 最小值（包含）
+    #     high=2,  # 最大值（不包含，因此实际取 0 或 1）
+    #     size=(128, 10, 10),
+    #     dtype=torch.float32  # 若需要浮点型（如用于计算）
+    # )
+    # for i in range(128):
+    #     for j in range(10):
+    #         for k in range(j+1):
+    #             if k !=j:
+    #                 adj_matrix_b[i,j,k] = adj_matrix_b[i,k,j]
+    #             else:
+    #                 adj_matrix_b[i, j, k] = 0
+    #
+    # adj_matrix={0:adj_matrix_b}
+    # summary(model, input_data=[input_feat, adj_matrix], depth=5)
+
     app()

@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/475500959557630764/7e101f03b4044916871ac1e7f1e5dcd2/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '475500959557630764'
+lifecycle_stage: active
+run_id: 7e101f03b4044916871ac1e7f1e5dcd2
+run_name: json-color1_10k-domain10-tv0.0
+run_uuid: 7e101f03b4044916871ac1e7f1e5dcd2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756436241173
+status: 1
+tags: []
+user_id: xzx

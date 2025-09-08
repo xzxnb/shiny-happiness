@@ -1,7 +1,8 @@
 # Common
 
 # Potato
-FROM --platform=amd64 nvidia/cuda:11.3.1-runtime-ubuntu18.04 
+#FROM --platform=amd64 nvidia/cuda:11.3.1-runtime-ubuntu18.04
+FROM nvcr.io/nvidia/cuda:11.3.1-cudnn8-runtime-ubuntu18.04
 # RCI
 # FROM --platform=amd64 nvidia/cuda:12.4.1-runtime-ubuntu20.04
 
@@ -19,16 +20,16 @@ RUN apt-get update \
     graphviz graphviz-dev cmake swi-prolog \
     texlive texlive-latex-extra  texlive-fonts-recommended \
     texlive-fonts-recommended \
-    # texlive-generic-recommended \
     texlive-latex-base texlive-latex-extra \
     texlive-latex-recommended texlive-publishers  texlive-science  texlive-xetex \
     dvipng cm-super dvipng ghostscript cm-super
 
-ARG USER_ID
-ARG GROUP_ID
-RUN (addgroup --gid $GROUP_ID app || true) \
-    && adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID app
-
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+# RUN (addgroup --gid $GROUP_ID app || true) \
+#     && adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID app
+RUN (addgroup --gid 1000 app || true) \
+    && adduser --disabled-password --gecos '' --uid 1000 --gid 1000 app
 USER app
 
 ENV HOME /home/app
@@ -39,12 +40,21 @@ ENV LANG C.UTF-8
 
 ARG PYTHON_VERSION
 
+# RUN git clone https://github.com/pyenv/pyenv.git $HOME/.pyenv \
+#     && pyenv install $PYTHON_VERSION \
+#     && pyenv global $PYTHON_VERSION \
+#     && pip install --upgrade "pip<24.1" \
+#     && pip install pipenv \
+#     && curl -sSL https://install.python-poetry.org | python -
+# 修改后
 RUN git clone https://github.com/pyenv/pyenv.git $HOME/.pyenv \
     && pyenv install $PYTHON_VERSION \
     && pyenv global $PYTHON_VERSION \
     && pip install --upgrade "pip<24.1" \
     && pip install pipenv \
-    && curl -sSL https://install.python-poetry.org | python -
+    && mkdir -p $HOME/.local/bin \
+    && pip install poetry
+
 ENV PATH="${PATH}:${HOME}/.local/bin"
 ENV PATH $PYENV_ROOT/versions/$PYTHON_VERSION/bin:$PATH
 
@@ -172,3 +182,12 @@ RUN pip install selfies
 RUN pip install torchmetrics==0.11.4
 
 RUN pip install pydantic
+
+# Set working directory
+WORKDIR /app
+ENV PYTHONPATH "/app:/app/DiGress:/app/GraphINVENT:/app/data_efficient_grammar:/app/reinvent-randomized:/app/Molecule-RNN:/app/paccmann_chemistry"
+
+# Install additional packages
+RUN pip install -e data_efficient_grammar/retro_star/packages/mlp_retrosyn && \
+    pip install -e data_efficient_grammar/retro_star/packages/rdchiral
+##pip install dgl-cu113 -f https://data.dgl.ai/wheels/repo.html
