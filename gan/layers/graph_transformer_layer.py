@@ -74,13 +74,10 @@ class MultiHeadAttentionLayer(nn.Module):
 
         g.send_and_recv(eids, fn.copy_edge('score', 'score'), fn.sum('score', 'z'))
 
-        isolated_nodes = (g.out_degrees(g.nodes()) == 0) | (g.in_degrees(g.nodes()) == 0)
-        g.ndata['wV'][isolated_nodes] = torch.zeros_like(g.ndata['wV'][isolated_nodes])
-        g.ndata['z'][isolated_nodes] = torch.ones_like(g.ndata['z'][isolated_nodes])
-        has_nan_wV = torch.isnan(g.ndata['wV']).any().item()
-        has_zero_z = (g.ndata['z'] == 0).any().item()
-        if has_zero_z == 1 or has_nan_wV == 1:
-            pdb.set_trace()
+        # has_nan_wV = torch.isnan(g.ndata['wV']).any().item()
+        # has_zero_z = (g.ndata['z'] == 0).any().item()
+        # if has_zero_z == 1 or has_nan_wV == 1:
+        #     pdb.set_trace()
         # 输出结果
         # print(f"wV 中存在 NaN: {has_nan_wV}")
         # print(f"z 中存在 0: {has_zero_z}")
@@ -100,14 +97,18 @@ class MultiHeadAttentionLayer(nn.Module):
         # print("Q_h维度:", g.dstdata['Q_h'].shape)  # 应为 (N, d_k)，如(8,4)
 
         self.propagate_attention(g)
-        has_nan_wV = torch.isnan(g.ndata['wV']).any().item()
-        has_zero_z = (g.ndata['z'] == 0).any().item()
-        if has_zero_z==1 or has_nan_wV==1:
-            pdb.set_trace()
+        # has_nan_wV = torch.isnan(g.ndata['wV']).any().item()
+        # has_zero_z = (g.ndata['z'] == 0).any().item()
+        # if has_zero_z==1 or has_nan_wV==1:
+        #     pdb.set_trace()
         # 输出结果
         # print(f"wV 中存在 NaN: {has_nan_wV}")
         # print(f"z 中存在 0: {has_zero_z}")
+        isolated_nodes = (g.out_degrees(g.nodes()) == 0) | (g.in_degrees(g.nodes()) == 0)
+        g.ndata['z'][isolated_nodes] = torch.ones_like(g.ndata['z'][isolated_nodes])
+
         head_out = g.ndata['wV'] / g.ndata['z']
+        g.ndata['wV'] = g.ndata['V_h'] + g.ndata['wV']
 
         return head_out
 
@@ -132,7 +133,7 @@ class GraphTransformerLayer(nn.Module):
         self.attention = MultiHeadAttentionLayer(in_dim, out_dim // num_heads, num_heads, use_bias)
 
         self.O = nn.Linear(out_dim, out_dim)
-
+        self.READ = nn.Linear(out_dim, out_dim)
         if self.layer_norm:
             self.layer_norm1 = nn.LayerNorm(out_dim)
 
@@ -155,6 +156,13 @@ class GraphTransformerLayer(nn.Module):
         # multi-head attention out
         attn_out = self.attention(g, h)
         h = attn_out.view(-1, self.out_channels)
+
+        g.ndata['h'] = h
+        hg = dgl.mean_nodes(g, 'h')
+        # hg = hg.unsqueeze(0)
+        hg = hg.repeat(h.shape[0], 1)
+        hg = self.READ(hg)
+
         has_nan = torch.isnan(h).any()
         if has_nan == 1:
             pdb.set_trace()
@@ -164,7 +172,7 @@ class GraphTransformerLayer(nn.Module):
         h = self.O(h)
 
         if self.residual:
-            h = h_in1 + h  # residual connection
+            h = h_in1 + h + hg  # residual connection
 
         if self.layer_norm:
             h = self.layer_norm1(h)

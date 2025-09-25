@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from torch_geometric.data import Data, Dataset
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType as BT
-from .abstract_dataset import AbstractDatasetInfos
-from .abstract_dataset import AbstractDataModule
+from DiGress.dgd.datasets.abstract_dataset import AbstractDatasetInfos
+from DiGress.dgd.datasets.abstract_dataset import AbstractDataModule
 
 bonds = {"friends": 0}
 
@@ -54,7 +54,8 @@ class FO2DataModule(AbstractDataModule):
                     self.cfg.train.n_train_data
                 ):
                     break
-        fols_deduplicated_train = sorted(set(train_fols))
+        # fols_deduplicated_train = sorted(set(train_fols))
+        fols_deduplicated_train = train_fols
         print(
             f"Train number of samples: {len(train_fols)}, deduplicated: {len(fols_deduplicated_train)}"
         )
@@ -70,7 +71,8 @@ class FO2DataModule(AbstractDataModule):
                 for line in f:
                     parsed_line = eval(line)
                     val_fols.append(tuple(parsed_line))
-        fold_deduplicated_val = sorted(set(val_fols))
+        # fold_deduplicated_val = sorted(set(val_fols))
+        fold_deduplicated_val = val_fols
         print(
             f"Val number of samples: {len(val_fols)}, deduplicated: {len(fold_deduplicated_val)}"
         )
@@ -87,7 +89,8 @@ class FO2DataModule(AbstractDataModule):
                     splited = line.replace(", ", ",").split(" ")
                     parsed_line = eval(splited[2] if len(splited) >= 3 else splited[0])
                     gen_fols.append(tuple(parsed_line))
-        fold_deduplicated_gen = list(set(gen_fols))
+        # fold_deduplicated_gen = list(set(gen_fols))
+        fold_deduplicated_gen = gen_fols
         random.shuffle(fold_deduplicated_gen)
 
         # Calculate the sizes available

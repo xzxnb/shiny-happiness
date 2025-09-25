@@ -49,7 +49,7 @@ class GraphTransformerNet(nn.Module):
         self.layers = nn.ModuleList([GraphTransformerLayer(hidden_dim, hidden_dim, num_heads,
                                               dropout, self.layer_norm, self.batch_norm, self.residual) for _ in range(n_layers)])
         self.layers.append(GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout, self.layer_norm, self.batch_norm,  False))
-        self.MLP_layer = MLPReadout(out_dim, n_classes)
+        self.MLP_layer = MLPReadout(out_dim, 1)
 
 
     def forward(self, g, h, h_lap_pos_enc, h_wl_pos_enc):
@@ -75,13 +75,14 @@ class GraphTransformerNet(nn.Module):
         if self.wl_pos_enc:
             h_wl_pos_enc = self.embedding_wl_pos_enc(h_wl_pos_enc) 
             h = h + h_wl_pos_enc
-        h = self.in_feat_dropout(h)
+        # h = self.in_feat_dropout(h)
         # GraphTransformer Layers
         for conv in self.layers:
             h = conv(g, h)
-
+        g.ndata['h'] = h
+        hg = dgl.mean_nodes(g, 'h')
         # output
-        h_out = self.MLP_layer(h)
+        h_out = self.MLP_layer(hg)
         return h_out
     
     

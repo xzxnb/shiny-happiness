@@ -1,0 +1,6 @@
+artifact_location: mlflow-artifacts:/473177559878426249
+creation_time: 1757484351642
+experiment_id: '473177559878426249'
+last_update_time: 1757484351642
+lifecycle_stage: active
+name: SHINY - SAGEConv_readout_addnode

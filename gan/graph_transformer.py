@@ -32,8 +32,8 @@ class GF(pl.LightningModule):
             # Transformer 超参数
             "n_heads": 8,
             "in_feat_dropout": 0.3,
-            "dropout": 0.3,
-            "L": 3,
+            "dropout": 0.1,
+            "L": 8,
             # 规范化/残差与读出
             "readout": "mean",
             "layer_norm": True,
@@ -88,8 +88,9 @@ class GF(pl.LightningModule):
             except:
                 batch_wl_pos_enc = None
             x = self.layer(g, node_features[i], batch_lap_pos_enc, batch_wl_pos_enc)
-            x = self.aggregator(x).squeeze(-1)
-            x = torch.nn.functional.tanh(x)
+            # x = self.aggregator(x).squeeze(-1)
+            x = x.squeeze(-1)
+            # x = torch.nn.functional.tanh(x)
             all_x.append(x)
         return torch.stack(all_x, dim=0)
 
@@ -100,7 +101,7 @@ class GF(pl.LightningModule):
         ]
         x = torch.cat(subgraphs, dim=-1)
 
-        x = self.classifier(x).reshape(-1)
+        x = x.reshape(-1)
 
         x = torch.nn.functional.sigmoid(x)
         return x
