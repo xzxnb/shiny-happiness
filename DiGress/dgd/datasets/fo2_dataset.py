@@ -19,7 +19,7 @@ class FO2DataModule(AbstractDataModule):
         self,
         cfg,
         auto_train_ratio: float = 0.8,
-        file_name: str = None,
+        file_name: t.List[str] = None,
         train_path: str = None,
         gen_file: str = None,
     ):
@@ -39,9 +39,10 @@ class FO2DataModule(AbstractDataModule):
         )
 
         if self.file_name:
-            val_file = f"/home/jungpete/projects/deepgraphon/data-fo2/{self.file_name}/{self.file_name}.val.txt"
-            if not os.path.exists(val_file):
-                val_file = f"/home/jungpete/projects/deepgraphon/data-fo2/{self.file_name}/{self.file_name}.test.txt"
+            val_file = self.file_name
+            # val_file = f"/home/jungpete/projects/deepgraphon/data-fo2/{self.file_name}/{self.file_name}.val.txt"
+            # if not os.path.exists(val_file):
+            #     val_file = f"/home/jungpete/projects/deepgraphon/data-fo2/{self.file_name}/{self.file_name}.test.txt"
         else:
             val_file = None
 
@@ -62,15 +63,21 @@ class FO2DataModule(AbstractDataModule):
         random.shuffle(fols_deduplicated_train)
 
         val_fols: t.List[t.Tuple[str, ...]] = []
+        fold_deduplicated_gen_val: t.List[t.Tuple[str, ...]] = []
         if val_file is None:
             split_index = int(self.auto_train_ratio * len(fols_deduplicated_train))
             val_fols = fols_deduplicated_train[split_index:]
             fols_deduplicated_train = fols_deduplicated_train[:split_index]
         else:
-            with open(val_file) as f:
+            with open(val_file[0]) as f:
                 for line in f:
                     parsed_line = eval(line)
                     val_fols.append(tuple(parsed_line))
+            with open(val_file[1]) as f:
+                for line in f:
+                    parsed_line = eval(line)
+                    fold_deduplicated_gen_val.append(tuple(parsed_line))
+
         # fold_deduplicated_val = sorted(set(val_fols))
         fold_deduplicated_val = val_fols
         print(
@@ -105,10 +112,10 @@ class FO2DataModule(AbstractDataModule):
         # Adjust datasets accordingly without repeating data
         fold_deduplicated_gen_train = fold_deduplicated_gen[:adjusted_train_size]
         fols_deduplicated_train = fols_deduplicated_train[:adjusted_train_size]
-
-        fold_deduplicated_gen_val = fold_deduplicated_gen[
-            adjusted_train_size : adjusted_train_size + adjusted_val_size
-        ]
+        if len(fold_deduplicated_gen_val) == 0:
+            fold_deduplicated_gen_val = fold_deduplicated_gen[
+                adjusted_train_size : adjusted_train_size + adjusted_val_size
+            ]
         fold_deduplicated_val = fold_deduplicated_val[:adjusted_val_size]
 
         assert fold_deduplicated_gen_train, f"{len(fold_deduplicated_gen_train)=}"
